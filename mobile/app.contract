@@ -2,7 +2,7 @@
 // app.ts's (app:/data/todo.json); the display name is a persisted setting. "Today" and
 // "Overdue" read the date from the clock the root keeps (`dates-and-days`), so the day
 // logic lives here in plain functions that tests drive with `epoch`.
-use EmptyState from "exact:content"
+use EmptyState, RingProgress from "exact:content"
 
 routes nav
   tab home "/"
@@ -25,10 +25,12 @@ shape Task
 shape Category
   id: string
   name: string
+  color: string
 
 shape CatRow
   id: string
   name: string
+  color: string
   count: number
 
 shape Reply
@@ -48,6 +50,12 @@ fn dueText(t: Task): string = t.due == "" ? "" : t.time == "" ? formatDate(t.due
 fn metaText(t: Task, cats: Category[]): string = [categoryName(cats, t.categoryId), dueText(t)].filter(s => s != "").join(" · ")
 fn countText(n: number): string = `${n} ${n == 1 ? "task" : "tasks"}`
 fn dueKey(t: Task): string = t.due == "" ? "9999-99-99" : t.due
+fn catToken(cats: Category[], id: string): string = match first(cats.filter(c => c.id == id)) { case some(c) => `cat.${c.color}`, case none => "text.secondary" }
+fn hourOf(ms: number, offset: number): number = floor((((ms / 60000 + offset) % 1440) + 1440) % 1440 / 60)
+fn salutation(hour: number): string = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
+fn chipLabel(k: string): string = k == "all" ? "All" : k == "active" ? "Active" : k == "done" ? "Done" : k == "today" ? "Today" : "Overdue"
+fn colorLabel(k: string): string = k == "blue" ? "Blue" : k == "violet" ? "Violet" : k == "pink" ? "Pink" : k == "orange" ? "Orange" : k == "green" ? "Green" : "Teal"
+fn initial(name: string): string = name.trim() == "" ? "" : name.trim().slice(0, 1).toUpperCase()
 fn tabTitle(name: string): string = name == "home" ? "Home" : name == "tasks" ? "Tasks" : name == "categories" ? "Categories" : "Settings"
 
 component App
@@ -56,6 +64,7 @@ component App
   state catFilter = ""
   state now = 0
   state catDraft = ""
+  state catColor = "blue"
   state catRefusal = ""
   resource time = exactTime() as shape Time
   resource tasks = loadTasks() as shape Task[] else empty()
@@ -70,8 +79,10 @@ component App
   derive todayDone = todayTasks.filter(t => t.done).length
   derive overdueCount = tasks.filter(t => isOverdue(t, today)).length
   derive upNext = sortBy(sortBy(tasks.filter(t => not t.done), t => t.time), t => dueKey(t)).slice(0, 5)
-  derive catRows = categories.map(c => CatRow(id=c.id, name=c.name, count=tasks.filter(x => x.categoryId == c.id).length))
-  derive greeting = name.trim() == "" ? "Hello" : `Hello, ${name.trim()}`
+  derive catRows = categories.map(c => CatRow(id=c.id, name=c.name, color=c.color, count=tasks.filter(x => x.categoryId == c.id).length))
+  derive hour = hourOf(time.epochAtZero + now, time.utcOffset)
+  derive greeting = name.trim() == "" ? "Hello" : `${salutation(hour)}, ${name.trim()}`
+  derive todayFraction = todayTasks.length == 0 ? 0 : todayDone / todayTasks.length
   derive catError = match catAdded { case some(r) => r.error, case none => "" }
   task tick mount
     every(60000, step)
@@ -100,13 +111,16 @@ component App
     send removed = removeTask(id)
   action openAddCategory
     catDraft = ""
+    catColor = "blue"
     catRefusal = ""
     nav = push(nav, "/new-category")
   action editCat(v: string)
     catDraft = v
+  action pickColor(v: string)
+    catColor = v
   action saveCat
     if catDraft.trim() != "" and not pending(catAdded)
-      send catAdded = addCategory(catDraft.trim())
+      send catAdded = addCategory(catDraft.trim(), catColor)
   // The sheet closes only on an ok reply; a refusal stays, saying why.
   action afterCat
     catRefusal = catError
@@ -184,6 +198,26 @@ component App
                               testId="cat-error"
                       footer
                         text (catDraft.trim() == "" ? "Enter a name to save." : "") testId="cat-hint"
+                    section
+                      header
+                        text "Color"
+                      row
+                        row gap=4 flex-wrap="wrap" flex=1 min-width=0 role="radiogroup" aria-label="Color"
+                          for k in ["blue", "violet", "pink", "orange", "green", "teal"] key=k
+                            column press=pickColor(k)
+                              role="radio"
+                              aria-checked=(catColor == k)
+                              aria-label=colorLabel(k)
+                              testId=`swatch-${k}`
+                              width="2.75rem"
+                              height="2.75rem"
+                              align-items="center"
+                              justify-content="center"
+                              column width="2.25rem" height="2.25rem" border-radius="50%" align-items="center" justify-content="center"
+                                background-color=`cat.${k}`
+                                border=(catColor == k ? "3px solid text.primary" : "3px solid transparent")
+                                if catColor == k
+                                  image "symbol:checkmark" color="ink.on-hero" aria-hidden=true
               else
                 column navigationKey=`${e.id}`
                   navigationScroll=`content-${e.id}`
@@ -191,81 +225,77 @@ component App
                   inset=0
                   display="flex"
                   flex-direction="column"
+                  background-color="surface.page"
                   header display="flex" align-items="center" gap=8 padding="8px 16px"
                     text tabTitle(e.name) role="heading" aria-level=1 flex=1
-                    if e.name == "tasks"
-                      button press=openAddTask aria-label="Add Task" testId="add-task"
-                        image "symbol:add"
                     if e.name == "categories"
                       button press=openAddCategory aria-label="Add Category" testId="add-category"
                         image "symbol:add"
                   if e.name == "home"
-                    list id=`content-${e.id}`
-                      appearance="auto"
-                      listStyle="inset-grouped"
-                      flex=1
-                      min-height=0
-                      section
-                        column gap=8 padding-top=8 padding-bottom=8 flex=1 min-width=0
-                          text greeting font="-exact-title2" testId="greeting"
-                          text `${todayDone} of ${todayTasks.length} done today` testId="progress-text"
-                          progress value=todayDone
-                            max=(todayTasks.length == 0 ? 1 : todayTasks.length)
-                            aria-label="Done today"
-                            testId="progress"
-                      section
-                        row
-                          text "All"
-                          text `${tasks.length}` font-variant-numeric="tabular-nums"
-                            testId="count-all"
-                        row
-                          text "Today"
-                          text `${todayTasks.length}` font-variant-numeric="tabular-nums"
-                            testId="count-today"
-                        row
-                          text "Overdue"
-                          text `${overdueCount}` font-variant-numeric="tabular-nums"
-                            testId="count-overdue"
-                      section
-                        header
-                          text "Up next"
-                        for x in upNext key=x.id
-                          row testId=`upnext-${x.id}`
-                            column flex=1 min-width=0
-                              text x.title
-                              if dueText(x) != ""
-                                text dueText(x) font="-exact-footnote"
-                                  color="-exact-secondary-label"
-                        if upNext.length == 0
-                          row
-                            text "Nothing to do." color="-exact-secondary-label"
+                    scroll id=`content-${e.id}` flex=1 min-height=0
+                      column gap=20 padding-bottom=24
+                        column padding="20px 16px" margin="8px 16px 0px" gap=16 border-radius=32
+                          background-image="linear-gradient(150deg, hero.start, hero.end)"
+                          testId="hero"
+                          text greeting font="-exact-title2" font-weight=600 color="ink.on-hero" testId="greeting"
+                          row flex-wrap="wrap" background-color="surface.card" border-radius=24 padding=16 gap=16 align-items="center"
+                            column width=120 flex-shrink=0
+                              RingProgress(label="Done", value=`${round(todayFraction * 100)}%`, fraction=todayFraction, tint=none)
+                            column flex="1 1 8rem" min-width=0 gap=4
+                              text `${todayDone} of ${todayTasks.length} done today` font="-exact-title3"
+                                color="text.primary" testId="progress-text"
+                              text (overdueCount > 0 ? `${overdueCount} overdue` : "Nothing overdue") font="-exact-footnote"
+                                color="text.secondary"
+                          row glassGroup=12 gap=12 flex-wrap="wrap"
+                            column flex="1 1 5rem" min-width=0 backgroundMaterial="glass" border-radius=20 padding=14 gap=4
+                              -exact-glass-tint="glass.tint"
+                              image "symbol:list" color="ink.on-hero" aria-hidden=true width="1.5rem" height="1.5rem"
+                              text `${tasks.length}` font-size="1.75rem" font-weight=700 font-variant-numeric="tabular-nums"
+                                color="ink.on-hero" testId="count-all"
+                              text "All" font="-exact-footnote" color="ink.on-hero"
+                            column flex="1 1 5rem" min-width=0 backgroundMaterial="glass" border-radius=20 padding=14 gap=4
+                              -exact-glass-tint="glass.tint"
+                              image "symbol:calendar" color="ink.on-hero" aria-hidden=true width="1.5rem" height="1.5rem"
+                              text `${todayTasks.length}` font-size="1.75rem" font-weight=700 font-variant-numeric="tabular-nums"
+                                color="ink.on-hero" testId="count-today"
+                              text "Today" font="-exact-footnote" color="ink.on-hero"
+                            column flex="1 1 5rem" min-width=0 backgroundMaterial="glass" border-radius=20 padding=14 gap=4
+                              -exact-glass-tint=(overdueCount > 0 ? "alert.glass" : "glass.tint")
+                              image "symbol:alert" color="ink.on-hero" aria-hidden=true width="1.5rem" height="1.5rem"
+                              text `${overdueCount}` font-size="1.75rem" font-weight=700 font-variant-numeric="tabular-nums"
+                                color="ink.on-hero" testId="count-overdue"
+                              text "Overdue" font="-exact-footnote" color="ink.on-hero"
+                        column margin="0px 16px" padding=16 gap=4 border-radius=24 background-color="surface.card" testId="upnext"
+                          text "Up next" role="heading" aria-level=2 color="text.primary" font="-exact-title3"
+                          for x in upNext key=x.id
+                            row gap=12 align-items="center" min-height=44 testId=`upnext-${x.id}`
+                              view width=10 height=10 border-radius=5 background-color=catToken(categories, x.categoryId)
+                              column flex=1 min-width=0
+                                text x.title color="text.primary"
+                                if dueText(x) != ""
+                                  text dueText(x) font="-exact-footnote" color=(isOverdue(x, today) ? "-exact-system-red" : "text.secondary")
+                          if upNext.length == 0
+                            text "Nothing to do." color="text.secondary"
                   else if e.name == "tasks"
                     if tasks.length == 0 and not pending(tasks)
-                      EmptyState(
-                        symbol="symbol:checkmark",
-                        title="No Tasks",
-                        message="Tasks you add appear here."
-                      )
-                        button press=openAddTask buttonStyle="filled" testId="empty-add"
-                          text "Add Task"
+                      EmptyState(symbol="symbol:checkmark", title="No Tasks", message="Tasks you add appear here.")
                     else
-                      list id=`content-${e.id}`
+                      list id=`content-${e.id}` background-color="surface.page"
                         appearance="auto"
                         listStyle="inset-grouped"
                         flex=1
                         min-height=0
                         section
                           row
-                            text "Show"
-                            select value=filter
-                              change=setFilter
-                              aria-label="Show"
-                              testId="filter-status"
-                              option "All" value="all"
-                              option "Active" value="active"
-                              option "Done" value="done"
-                              option "Today" value="today"
-                              option "Overdue" value="overdue"
+                            row overflow-x="auto" gap=8 padding=8 border-radius=16 flex=1 min-width=0 testId="chips"
+                              background-image="linear-gradient(150deg, hero.start, hero.end)"
+                              for k in ["all", "active", "done", "today", "overdue"] key=k
+                                button press=setFilter(k)
+                                  buttonStyle=(filter == k ? "prominent-glass" : "glass")
+                                  aria-pressed=(filter == k)
+                                  testId=`chip-${k}`
+                                  flex-shrink=0
+                                  text chipLabel(k) white-space="nowrap"
                           row
                             text "Category"
                             select value=catFilter
@@ -297,6 +327,7 @@ component App
                                   min-width=0
                                   min-height=44
                                   testId=`open-${x.id}`
+                                  view width=10 height=10 border-radius=5 background-color=catToken(categories, x.categoryId)
                                   column flex=1 min-width=0
                                     text x.title testId=`title-${x.id}`
                                     if metaText(x, categories) != ""
@@ -304,18 +335,23 @@ component App
                                         color=(isOverdue(x, today) ? "-exact-system-red" : "-exact-secondary-label")
                                         testId=`meta-${x.id}`
                                   image "symbol:forward-chevron"
+                    row justify-content="flex-end" padding="8px 16px 12px"
+                      button press=openAddTask buttonStyle="prominent-glass" aria-label="Add Task" testId="add-task"
+                        image "symbol:add"
                   else if e.name == "categories"
-                    list id=`content-${e.id}`
-                      appearance="auto"
-                      listStyle="inset-grouped"
-                      flex=1
-                      min-height=0
-                      section
+                    scroll id=`content-${e.id}` flex=1 min-height=0
+                      row flex-wrap="wrap" gap=12 padding=16
                         for c in catRows key=c.id
-                          row testId=`row-${c.id}`
-                            text c.name testId=`category-${c.id}`
-                            text countText(c.count) color="-exact-secondary-label"
-                              testId=`count-${c.id}`
+                          column flex="1 1 8rem" min-width=0 gap=12 padding=16 border-radius=24
+                            background-color=`cat.${c.color}.tint`
+                            testId=`card-${c.id}`
+                            column width="2.5rem" height="2.5rem" border-radius="1.25rem" align-items="center" justify-content="center"
+                              background-color=`cat.${c.color}`
+                              image "symbol:list" color="ink.on-hero" aria-hidden=true width="1.25rem" height="1.25rem"
+                            column gap=2
+                              text c.name font="-exact-headline" color="text.primary" testId=`category-${c.id}`
+                              text countText(c.count) font="-exact-footnote" color="text.secondary"
+                                testId=`count-${c.id}`
                   else
                     list id=`content-${e.id}`
                       appearance="auto"
@@ -323,6 +359,16 @@ component App
                       flex=1
                       min-height=0
                       section
+                        row gap=16 align-items="center"
+                          column width="4rem" height="4rem" border-radius="2rem" align-items="center" justify-content="center"
+                            background-image="linear-gradient(150deg, hero.start, hero.end)"
+                            testId="avatar"
+                            if initial(name) == ""
+                              image "symbol:person" color="ink.on-hero" aria-hidden=true
+                            else
+                              text initial(name) font="-exact-title1" color="ink.on-hero"
+                          column flex=1 min-width=0
+                            text (name.trim() == "" ? "Your name" : name.trim()) font="-exact-headline"
                         row
                           input value=name
                             input=setName

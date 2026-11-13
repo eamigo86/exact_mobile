@@ -72,7 +72,7 @@ test: ## Run the Contract tests on the web host
 	$(RUN) test web
 
 test-ios: ## Build, then run the Contract tests on an iOS Simulator
-	$(RUN) ios && $(RUN) test ios
+	$(RUN) ios && bun exact.mjs test ios
 
 test-android: ## Run the Contract tests on the device ANDROID_SERIAL names (build first: make android)
 	$(RUN) test android
@@ -81,7 +81,7 @@ verify: ## Full web check: tests, light/dark, widths, large text
 	$(RUN) verify web
 
 verify-ios: ## Build, then the full iOS Simulator check
-	$(RUN) ios && $(RUN) verify ios
+	$(RUN) ios && bun exact.mjs verify ios
 
 verify-android: ## Full Android check (needs a running emulator: make emulator)
 	$(RUN) verify android

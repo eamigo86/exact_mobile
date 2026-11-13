@@ -1,0 +1,28 @@
+tamber exacttodo
+
+theme
+  AccentColor = light-dark(#2f6bea, #4a82ee)
+  brand.blue = light-dark(#3d7bf7, #6a9bff)
+  brand.violet = light-dark(#7b5cf5, #9c86ff)
+  hero.start = light-dark(#2f6bea, #1f3a8a)
+  hero.end = light-dark(#6b4ce6, #4a2c9b)
+  ink.on-hero = #ffffff  scheme=fixed
+  ink.on-hero-soft = rgba(255, 255, 255, 0.82)  scheme=fixed
+  surface.page = light-dark(#f3f5fc, #0b0d14)
+  surface.card = light-dark(#ffffff, #171a24)
+  text.primary = light-dark(#10131c, #f2f4fa)
+  text.secondary = light-dark(#5b6275, #a3a9bb)
+  glass.tint = rgba(14, 22, 84, 0.62)  scheme=fixed
+  alert.glass = rgba(150, 14, 40, 0.72)  scheme=fixed
+  cat.blue = light-dark(#3d7bf7, #6a9bff)
+  cat.violet = light-dark(#7b5cf5, #9c86ff)
+  cat.pink = light-dark(#d93a8f, #ff6fb5)
+  cat.orange = light-dark(#d9730d, #ffa94d)
+  cat.green = light-dark(#1b8f5c, #3dd598)
+  cat.teal = light-dark(#0e8fa3, #3cc9de)
+  cat.blue.tint = color-mix(in oklab, cat.blue 16%, surface.card)
+  cat.violet.tint = color-mix(in oklab, cat.violet 16%, surface.card)
+  cat.pink.tint = color-mix(in oklab, cat.pink 16%, surface.card)
+  cat.orange.tint = color-mix(in oklab, cat.orange 16%, surface.card)
+  cat.green.tint = color-mix(in oklab, cat.green 16%, surface.card)
+  cat.teal.tint = color-mix(in oklab, cat.teal 16%, surface.card)

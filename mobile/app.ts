@@ -7,11 +7,17 @@ type Task = Result<'loadTasks'>[number];
 type Category = Result<'loadCategories'>[number];
 type Data = { categories: Category[]; tasks: Task[] };
 
-const SEED: Category[] = ['Home', 'Work', 'Personal'].map((name, i) => ({ id: String(i + 1), name }));
+const PALETTE = ['blue', 'violet', 'pink', 'orange', 'green', 'teal'];
+const SEED: Category[] = ['Home', 'Work', 'Personal'].map((name, i) => ({ id: String(i + 1), name, color: PALETTE[i] }));
 
 // The file is the only store; no file yet (also the build's 'bake') is the seeded, empty app.
+// A file saved before categories had a colour gets one from the palette by position.
+const withColors = (data: Data): Data => ({
+  ...data,
+  categories: data.categories.map((c, i) => ({ ...c, color: c.color || PALETTE[i % PALETTE.length] })),
+});
 const load = (storage: Storage): Promise<Data> => storage.fs.readFile(FILE).then(
-  (bytes) => JSON.parse(new TextDecoder().decode(bytes)) as Data,
+  (bytes) => withColors(JSON.parse(new TextDecoder().decode(bytes)) as Data),
   (e) => { if (e.code === 'ENOENT' || e.code === 'bake') return { categories: SEED, tasks: [] }; throw e; });
 const save = async (storage: Storage, data: Data): Promise<Result<'saveTask'>> => {
   await storage.fs.atomicWriteFile(FILE, new TextEncoder().encode(JSON.stringify(data)));
@@ -37,11 +43,11 @@ const sources: Sources = {
     const data = await load(storage);
     return save(storage, { ...data, tasks: data.tasks.filter((t) => t.id !== id) });
   },
-  addCategory: async ([name], _store, storage) => {
+  addCategory: async ([name, color], _store, storage) => {
     const data = await load(storage);
     const same = data.categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
     if (same) return { ok: false, error: `There is already a category called ${same.name}.` };
-    return save(storage, { ...data, categories: [...data.categories, { id: nextId(data.categories), name }] });
+    return save(storage, { ...data, categories: [...data.categories, { id: nextId(data.categories), name, color: PALETTE.includes(color) ? color : PALETTE[0] }] });
   },
 };
 export const answer: Answer = (source, args, store, storage, native) => sources[source](args, store, storage, native);
