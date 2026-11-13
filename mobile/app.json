@@ -1,0 +1,29 @@
+{
+  "$schema": "../../../../.exact/exact2/scripts/app.schema.json",
+  "name": "Exact Todo",
+  "short_name": "Exact Todo",
+  "id": "com.example.exacttodo",
+  "start_url": "/",
+  "display": "standalone",
+  "app": {
+    "id": "com.example.exacttodo",
+    "name": "Exact Todo"
+  },
+  "host": {
+    "web": {},
+    "ios": {
+      "minimumOS": "17.0",
+      "deviceFamily": [
+        "iphone",
+        "ipad"
+      ]
+    },
+    "android": {}
+  },
+  "deploy": {
+    "store": {
+      "web": "0",
+      "ios": "0"
+    }
+  }
+}
