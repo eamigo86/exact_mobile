@@ -71,8 +71,8 @@ web: ## Dev loop in the browser, rebuilds on save
 test: ## Run the Contract tests on the web host
 	$(RUN) test web
 
-test-ios: ## Run the Contract tests on an iOS Simulator
-	$(RUN) test ios
+test-ios: ## Build, then run the Contract tests on an iOS Simulator
+	$(RUN) ios && $(RUN) test ios
 
 test-android: ## Run the Contract tests on the device ANDROID_SERIAL names (build first: make android)
 	$(RUN) test android
@@ -80,8 +80,8 @@ test-android: ## Run the Contract tests on the device ANDROID_SERIAL names (buil
 verify: ## Full web check: tests, light/dark, widths, large text
 	$(RUN) verify web
 
-verify-ios: ## Full iOS Simulator check
-	$(RUN) verify ios
+verify-ios: ## Build, then the full iOS Simulator check
+	$(RUN) ios && $(RUN) verify ios
 
 verify-android: ## Full Android check (needs a running emulator: make emulator)
 	$(RUN) verify android

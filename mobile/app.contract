@@ -290,8 +290,12 @@ component App
                                   aria-label=`Done: ${x.title}`
                                   testId=`done-${x.id}`
                                 link href=path("editTask", x.id)
+                                  display="flex"
+                                  align-items="center"
+                                  gap=8
                                   flex=1
                                   min-width=0
+                                  min-height=44
                                   testId=`open-${x.id}`
                                   column flex=1 min-width=0
                                     text x.title testId=`title-${x.id}`
