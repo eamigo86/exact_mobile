@@ -1,7 +1,182 @@
-test "the greeting loads"
-  expect tree has "root"
-  expect text "greeting" == "Hello from Exact Todo."
+test "default categories are seeded"
+  clock data
+  expect state categories.0 .name == "Home"
+  expect state categories.1 .name == "Work"
+  expect state categories.2 .name == "Personal"
 
-test "the header's button likes it"
-  tap "like"
-  expect state liked == true
+test "a task is added, an empty title refused"
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  expect disabled "form-save"
+  type "form-title" "Buy milk"
+  type "form-notes" "Two litres"
+  type "form-category" "2"
+  expect enabled "form-save"
+  tap "form-save"
+  clock data
+  clock settle
+  expect text "title-1" == "Buy milk"
+  expect text "meta-1" == "Work"
+  expect state tasks.0 .notes == "Two litres"
+
+test "a task is toggled done and deleted"
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Call Ann"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "done-1"
+  clock data
+  expect state tasks.0 .done == true
+  tap "task-1-delete"
+  clock data
+  expect state tasks == []
+  expect tree missing "task-1"
+
+test "a task is edited through its sheet"
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Call Ann"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "open-1"
+  clock settle
+  expect text "form-title" == "Call Ann"
+  type "form-title" "Call Anna"
+  type "form-due" "2026-03-20"
+  type "form-time" "09:30"
+  tap "form-save"
+  clock data
+  clock settle
+  expect text "title-1" == "Call Anna"
+  expect text "meta-1" == "Mar 20, 2026 09:30"
+
+test "filters narrow the list by status and category"
+  epoch "2026-03-15T12:00:00Z"
+  time-zone "UTC"
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Late"
+  type "form-category" "1"
+  type "form-due" "2026-03-10"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "add-task"
+  clock settle
+  type "form-title" "Now"
+  type "form-category" "2"
+  type "form-due" "2026-03-15"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "add-task"
+  clock settle
+  type "form-title" "Later"
+  type "form-category" "2"
+  type "form-due" "2026-03-30"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "done-3"
+  clock data
+  type "filter-status" "overdue"
+  expect tree has "task-1"
+  expect tree missing "task-2"
+  expect tree missing "task-3"
+  type "filter-status" "today"
+  expect tree has "task-2"
+  expect tree missing "task-1"
+  type "filter-status" "done"
+  expect tree has "task-3"
+  expect tree missing "task-2"
+  type "filter-status" "active"
+  expect tree has "task-1"
+  expect tree missing "task-3"
+  type "filter-status" "all"
+  type "filter-category" "2"
+  expect tree missing "task-1"
+  expect tree has "task-2"
+  expect tree has "task-3"
+
+test "a category is added with a count, a duplicate refused"
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Pay rent"
+  type "form-category" "1"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "tab-categories"
+  expect text "count-1" == "1 task"
+  expect text "count-2" == "0 tasks"
+  tap "add-category"
+  clock settle
+  expect disabled "cat-save"
+  type "cat-name" "Errands"
+  tap "cat-save"
+  clock data
+  clock settle
+  expect text "category-4" == "Errands"
+  tap "add-category"
+  clock settle
+  type "cat-name" "errands"
+  tap "cat-save"
+  clock data
+  expect text "cat-error" == "There is already a category called Errands."
+  expect state categories.length == 4
+
+test "the settings name greets on Home, and Home counts"
+  epoch "2026-03-15T12:00:00Z"
+  time-zone "UTC"
+  clock data
+  expect text "greeting" == "Hello"
+  tap "tab-settings"
+  type "settings-name" "Ada"
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Late"
+  type "form-due" "2026-03-10"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "add-task"
+  clock settle
+  type "form-title" "Now"
+  type "form-due" "2026-03-15"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "done-2"
+  clock data
+  tap "tab-home"
+  expect text "greeting" == "Hello, Ada"
+  expect text "progress-text" == "1 of 1 done today"
+  expect text "count-all" == "2"
+  expect text "count-today" == "1"
+  expect text "count-overdue" == "1"
+  expect tree has "upnext-1"
+  expect tree missing "upnext-2"
+
+test "tasks and the name survive a reload"
+  tap "tab-settings"
+  type "settings-name" "Ada"
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Keep me"
+  tap "form-save"
+  clock data
+  clock settle
+  reload
+  clock data
+  expect state tasks.0 .title == "Keep me"
+  expect state name == "Ada"

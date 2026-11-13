@@ -43,8 +43,8 @@ avatars, biometrics, push, side menu, server templates.
 
 ## Tasks
 
-- [ ] T1 Scaffold: SDK + Bun bootstrap, `exact new --with ios,android`, git, Makefile. Route: inline (mechanical, one file).
-- [ ] T2 Tasks + categories + dashboard + settings app (tests first). Route: delegated writer (2+ non-trivial files).
+- [x] T1 Scaffold: SDK + Bun bootstrap, `exact new --with ios,android`, git, Makefile. Route: inline (mechanical, one file). Evidence: `make check` → `[]`; commit c8cfb88.
+- [x] T2 Tasks + categories + dashboard + settings app (tests first). Route: delegated writer (2+ non-trivial files).
 - [ ] T3 Platform checks: `verify web`, `verify ios`, `verify android`. Route: inline per-action.
 
 ## Acceptance criteria

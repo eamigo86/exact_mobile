@@ -1,24 +1,430 @@
-// Exact Todo: the view. app.ts answers what it asks for. Colours, fonts,
-// sizes and the safe area are left unsaid, so each platform supplies its own:
-// the header is the navigation bar, its heading the title, its button a bar item.
-shape Greeting
-  text: string
+// Exact Todo: four tabs (Home, Tasks, Categories, Settings). Tasks and categories are
+// app.ts's (app:/data/todo.json); the display name is a persisted setting. "Today" and
+// "Overdue" read the date from the clock the root keeps (`dates-and-days`), so the day
+// logic lives here in plain functions that tests drive with `epoch`.
+use EmptyState from "exact:content"
 
 routes nav
-  home "/"
+  tab home "/"
+  tab tasks "/tasks"
+    addTask "/new-task"
+    editTask "/task/:id"
+  tab categories "/categories"
+    addCategory "/new-category"
+  tab settings "/settings"
 
-component Mobile
-  resource greeting = greeting("Exact Todo") as shape Greeting
-  state liked = false
-  action like
-    liked = not liked
+shape Task
+  id: string
+  title: string
+  notes: string
+  categoryId: string
+  due: string
+  time: string
+  done: bool
+
+shape Category
+  id: string
+  name: string
+
+shape CatRow
+  id: string
+  name: string
+  count: number
+
+shape Reply
+  ok: bool
+  error: string
+
+shape Time
+  epochAtZero: number
+  utcOffset: number
+
+fn isOverdue(t: Task, today: string): bool = not t.done and t.due != "" and t.due < today
+fn isToday(t: Task, today: string): bool = t.due == today
+fn passes(t: Task, status: string, cat: string, today: string): bool =
+  (cat == "" or t.categoryId == cat) and (status == "all" or (status == "active" and not t.done) or (status == "done" and t.done) or (status == "today" and isToday(t, today)) or (status == "overdue" and isOverdue(t, today)))
+fn categoryName(cats: Category[], id: string): string = match first(cats.filter(c => c.id == id)) { case some(c) => c.name, case none => "" }
+fn dueText(t: Task): string = t.due == "" ? "" : t.time == "" ? formatDate(t.due, 0, "medium") : `${formatDate(t.due, 0, "medium")} ${t.time}`
+fn metaText(t: Task, cats: Category[]): string = [categoryName(cats, t.categoryId), dueText(t)].filter(s => s != "").join(" · ")
+fn countText(n: number): string = `${n} ${n == 1 ? "task" : "tasks"}`
+fn dueKey(t: Task): string = t.due == "" ? "9999-99-99" : t.due
+fn tabTitle(name: string): string = name == "home" ? "Home" : name == "tasks" ? "Tasks" : name == "categories" ? "Categories" : "Settings"
+
+component App
+  state name = "" persist
+  state filter = "all"
+  state catFilter = ""
+  state now = 0
+  state catDraft = ""
+  state catRefusal = ""
+  resource time = exactTime() as shape Time
+  resource tasks = loadTasks() as shape Task[] else empty()
+  resource categories = loadCategories() as shape Category[] else empty()
+  mutation saved as shape Reply queue refreshes tasks
+  mutation toggled as shape Reply queue refreshes tasks
+  mutation removed as shape Reply queue refreshes tasks
+  mutation catAdded as shape Reply queue refreshes categories then afterCat
+  derive today = formatDate(time.epochAtZero + now, time.utcOffset, "iso")
+  derive shown = tasks.filter(t => passes(t, filter, catFilter, today))
+  derive todayTasks = tasks.filter(t => isToday(t, today))
+  derive todayDone = todayTasks.filter(t => t.done).length
+  derive overdueCount = tasks.filter(t => isOverdue(t, today)).length
+  derive upNext = sortBy(sortBy(tasks.filter(t => not t.done), t => t.time), t => dueKey(t)).slice(0, 5)
+  derive catRows = categories.map(c => CatRow(id=c.id, name=c.name, count=tasks.filter(x => x.categoryId == c.id).length))
+  derive greeting = name.trim() == "" ? "Hello" : `Hello, ${name.trim()}`
+  derive catError = match catAdded { case some(r) => r.error, case none => "" }
+  task tick mount
+    every(60000, step)
+  action step
+    now = performanceNow()
+  action pick(tab: string)
+    nav = select(nav, tab)
+  action follow(url: string)
+    nav = go(nav, url)
+  action back
+    nav = back(nav)
+  action setFilter(v: string)
+    filter = v
+  action setCatFilter(v: string)
+    catFilter = v
+  action setName(v: string)
+    name = v
+  action openAddTask
+    nav = push(nav, "/new-task")
+  action commitTask(id: string, title: string, notes: string, categoryId: string, due: string, time: string)
+    send saved = saveTask(id, title.trim(), notes.trim(), categoryId, due, time)
+    nav = back(nav)
+  action toggle(id: string, done: bool)
+    send toggled = toggleTask(id, done)
+  action remove(id: string)
+    send removed = removeTask(id)
+  action openAddCategory
+    catDraft = ""
+    catRefusal = ""
+    nav = push(nav, "/new-category")
+  action editCat(v: string)
+    catDraft = v
+  action saveCat
+    if catDraft.trim() != "" and not pending(catAdded)
+      send catAdded = addCategory(catDraft.trim())
+  // The sheet closes only on an ok reply; a refusal stays, saying why.
+  action afterCat
+    catRefusal = catError
+    if catError == "" and top(nav).name == "addCategory"
+      nav = back(nav)
+
   view
-    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" width="100%" height="100%"
-      for e in stack(nav) key=e.id
-        column navigationKey=`${e.id}` navigationScroll="content" position="absolute" inset=0 display="flex" flex-direction="column"
-          header display="flex" align-items="center"
-            text "Exact Todo" role="heading" aria-level=1 flex=1
-            button press=like aria-label=(liked ? "Unlike" : "Like") testId="like"
-              image (liked ? "symbol:heart-fill" : "symbol:heart")
-          scroll id="content" flex=1 min-height=0 padding=16
-            text greeting.text testId="greeting"
+    main navigationKey=`${top(nav).id}`
+      navigationBack="back"
+      navigate=follow
+      testId="app"
+      width="100%"
+      height="100%"
+      display="flex"
+      flex-direction="column"
+      column flex=1 min-height=0 position="relative"
+        for t in nav.tabs key=t.name
+          column role="tabpanel" id=`panel-${t.name}` position="absolute" inset=0
+            for e in t.stack key=e.id
+              if e.name == "addTask"
+                TaskForm(
+                  route=e.id,
+                  task=Task(id="", title="", notes="", categoryId="", due="", time="", done=false),
+                  categories=categories,
+                  save=commitTask,
+                  cancel=back,
+                  heading="New Task"
+                )
+              else if e.name == "editTask"
+                for x in tasks.filter(k => k.id == e.params.id) key=x.id
+                  TaskForm(
+                    route=e.id,
+                    task=x,
+                    categories=categories,
+                    save=commitTask,
+                    cancel=back,
+                    heading="Edit Task"
+                  )
+              else if e.name == "addCategory"
+                column navigationKey=`${e.id}`
+                  navigationPresentation="modal"
+                  navigationScroll="cat-form"
+                  position="absolute"
+                  inset=0
+                  display="flex"
+                  flex-direction="column"
+                  header display="flex"
+                    align-items="center"
+                    justify-content="space-between"
+                    padding="8px 16px"
+                    button id="back" press=back aria-label="Cancel" testId="cat-cancel"
+                      image "symbol:close"
+                    text "New Category" role="heading"
+                    button press=saveCat
+                      buttonStyle="bordered-prominent"
+                      aria-label="Save"
+                      testId="cat-save"
+                      disabled=(catDraft.trim() == "" or pending(catAdded))
+                      image "symbol:checkmark"
+                  list id="cat-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    section
+                      row
+                        column flex=1 min-width=0 gap=4
+                          input value=catDraft
+                            input=editCat
+                            placeholder="Name"
+                            aria-label="Name"
+                            autofocus=true
+                            submit=saveCat
+                            aria-invalid=(catRefusal != "")
+                            testId="cat-name"
+                          if catRefusal != ""
+                            text catRefusal font="-exact-footnote"
+                              color="-exact-system-red"
+                              testId="cat-error"
+                      footer
+                        text (catDraft.trim() == "" ? "Enter a name to save." : "") testId="cat-hint"
+              else
+                column navigationKey=`${e.id}`
+                  navigationScroll=`content-${e.id}`
+                  position="absolute"
+                  inset=0
+                  display="flex"
+                  flex-direction="column"
+                  header display="flex" align-items="center" gap=8 padding="8px 16px"
+                    text tabTitle(e.name) role="heading" aria-level=1 flex=1
+                    if e.name == "tasks"
+                      button press=openAddTask aria-label="Add Task" testId="add-task"
+                        image "symbol:add"
+                    if e.name == "categories"
+                      button press=openAddCategory aria-label="Add Category" testId="add-category"
+                        image "symbol:add"
+                  if e.name == "home"
+                    list id=`content-${e.id}`
+                      appearance="auto"
+                      listStyle="inset-grouped"
+                      flex=1
+                      min-height=0
+                      section
+                        column gap=8 padding-top=8 padding-bottom=8 flex=1 min-width=0
+                          text greeting font="-exact-title2" testId="greeting"
+                          text `${todayDone} of ${todayTasks.length} done today` testId="progress-text"
+                          progress value=todayDone
+                            max=(todayTasks.length == 0 ? 1 : todayTasks.length)
+                            aria-label="Done today"
+                            testId="progress"
+                      section
+                        row
+                          text "All"
+                          text `${tasks.length}` font-variant-numeric="tabular-nums"
+                            testId="count-all"
+                        row
+                          text "Today"
+                          text `${todayTasks.length}` font-variant-numeric="tabular-nums"
+                            testId="count-today"
+                        row
+                          text "Overdue"
+                          text `${overdueCount}` font-variant-numeric="tabular-nums"
+                            testId="count-overdue"
+                      section
+                        header
+                          text "Up next"
+                        for x in upNext key=x.id
+                          row testId=`upnext-${x.id}`
+                            column flex=1 min-width=0
+                              text x.title
+                              if dueText(x) != ""
+                                text dueText(x) font="-exact-footnote"
+                                  color="-exact-secondary-label"
+                        if upNext.length == 0
+                          row
+                            text "Nothing to do." color="-exact-secondary-label"
+                  else if e.name == "tasks"
+                    if tasks.length == 0 and not pending(tasks)
+                      EmptyState(
+                        symbol="symbol:checkmark",
+                        title="No Tasks",
+                        message="Tasks you add appear here."
+                      )
+                        button press=openAddTask buttonStyle="filled" testId="empty-add"
+                          text "Add Task"
+                    else
+                      list id=`content-${e.id}`
+                        appearance="auto"
+                        listStyle="inset-grouped"
+                        flex=1
+                        min-height=0
+                        section
+                          row
+                            text "Show"
+                            select value=filter
+                              change=setFilter
+                              aria-label="Show"
+                              testId="filter-status"
+                              option "All" value="all"
+                              option "Active" value="active"
+                              option "Done" value="done"
+                              option "Today" value="today"
+                              option "Overdue" value="overdue"
+                          row
+                            text "Category"
+                            select value=catFilter
+                              change=setCatFilter
+                              aria-label="Category"
+                              testId="filter-category"
+                              option "All categories" value=""
+                              for c in categories key=c.id
+                                option c.name value=c.id
+                        if shown.length == 0
+                          section
+                            row
+                              text "No tasks match." color="-exact-secondary-label"
+                                testId="no-match"
+                        else
+                          section
+                            for x in shown key=x.id
+                              row delete=remove(x.id) testId=`task-${x.id}`
+                                input type="checkbox"
+                                  checked=x.done
+                                  change=toggle(x.id)
+                                  aria-label=`Done: ${x.title}`
+                                  testId=`done-${x.id}`
+                                link href=path("editTask", x.id)
+                                  flex=1
+                                  min-width=0
+                                  testId=`open-${x.id}`
+                                  column flex=1 min-width=0
+                                    text x.title testId=`title-${x.id}`
+                                    if metaText(x, categories) != ""
+                                      text metaText(x, categories) font="-exact-footnote"
+                                        color=(isOverdue(x, today) ? "-exact-system-red" : "-exact-secondary-label")
+                                        testId=`meta-${x.id}`
+                                  image "symbol:forward-chevron"
+                  else if e.name == "categories"
+                    list id=`content-${e.id}`
+                      appearance="auto"
+                      listStyle="inset-grouped"
+                      flex=1
+                      min-height=0
+                      section
+                        for c in catRows key=c.id
+                          row testId=`row-${c.id}`
+                            text c.name testId=`category-${c.id}`
+                            text countText(c.count) color="-exact-secondary-label"
+                              testId=`count-${c.id}`
+                  else
+                    list id=`content-${e.id}`
+                      appearance="auto"
+                      listStyle="inset-grouped"
+                      flex=1
+                      min-height=0
+                      section
+                        row
+                          input value=name
+                            input=setName
+                            placeholder="Display name"
+                            aria-label="Display name"
+                            autocomplete="name"
+                            autocapitalize="words"
+                            testId="settings-name"
+                            flex=1
+                            min-width=0
+                        footer
+                          text "Shown in the greeting on Home."
+      row role="tablist" testId="tabs"
+        for t in nav.tabs key=t.name
+          button role="tab"
+            aria-controls=`panel-${t.name}`
+            aria-selected=(nav.tab == t.name)
+            press=pick(t.name)
+            testId=`tab-${t.name}`
+            flex=1
+            image (t.name == "home" ? "symbol:home" : t.name == "tasks" ? "symbol:checkmark" : t.name == "categories" ? "symbol:list" : "symbol:settings")
+            text tabTitle(t.name)
+
+// The add and edit sheet: its drafts start from the task its route shows.
+component TaskForm
+  props
+    route: number
+    task: Task
+    categories: Category[]
+    save: action
+    cancel: action
+    heading: string
+  state title = task.title
+  state notes = task.notes
+  state categoryId = task.categoryId
+  state due = task.due
+  state time = task.time
+  action setTitle(v: string)
+    title = v
+  action setNotes(v: string)
+    notes = v
+  action setCategory(v: string)
+    categoryId = v
+  action setDue(v: string)
+    due = v
+  action setTime(v: string)
+    time = v
+  action clearDue
+    due = ""
+    time = ""
+  view
+    column navigationKey=`${route}`
+      navigationPresentation="modal"
+      navigationScroll="task-form"
+      position="absolute"
+      inset=0
+      display="flex"
+      flex-direction="column"
+      header display="flex" align-items="center" justify-content="space-between" padding="8px 16px"
+        button id="back" press=cancel aria-label="Cancel" testId="form-cancel"
+          image "symbol:close"
+        text heading role="heading"
+        button press=save(task.id, title, notes, categoryId, due, time)
+          buttonStyle="bordered-prominent"
+          aria-label="Save"
+          disabled=(title.trim() == "")
+          testId="form-save"
+          image "symbol:checkmark"
+      list id="task-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+        section
+          row
+            input value=title
+              input=setTitle
+              placeholder="Title"
+              aria-label="Title"
+              autofocus=true
+              testId="form-title"
+              flex=1
+              min-width=0
+          footer
+            text (title.trim() == "" ? "Enter a title to save." : "") testId="form-hint"
+        section
+          header
+            text "Notes"
+          row padding-top=8 padding-bottom=8
+            textarea value=notes
+              input=setNotes
+              placeholder="Optional"
+              aria-label="Notes"
+              rows=3
+              testId="form-notes"
+              flex=1
+              min-width=0
+        section
+          row
+            text "Category"
+            select value=categoryId change=setCategory aria-label="Category" testId="form-category"
+              option "None" value=""
+              for c in categories key=c.id
+                option c.name value=c.id
+          row
+            text "Due date"
+            input type="date" value=due change=setDue aria-label="Due date" testId="form-due"
+          row
+            text "Due time"
+            input type="time" value=time change=setTime aria-label="Due time" testId="form-time"
+          if due != ""
+            button press=clearDue testId="form-clear-due"
+              text "Remove Due Date"
