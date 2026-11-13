@@ -40,6 +40,7 @@ lists, a thin progress bar and no brand colour. The user asked for a modern
 ## Tasks
 
 - [x] T1 Redesign with tamber palette, glass Home, chips, category colours (tests first for colours). Route: delegated writer (app.contract, app.ts, app.tamber, tests).
+- [x] T3 "Warm Paper" palette (user rejected blue-violet): warm paper neutrals, light peach/pink mesh hero, white-alpha glass tint, single terracotta accent, accessible category colours; overdue as danger text, not red glass. Route: inline (app.tamber values + small app.contract token edits, already understood). Styling only: existing 11 tests are the regression guard. Evidence: `make verify` clean (390 and 1280 wide, light/dark, largest text); `make verify-ios` 11/11, 0 findings; `make verify-android` 11/11, screenshots reviewed. Extra fixes found while verifying: stat tiles wrapped at 390 pt (content-box flex basis 5rem -> 3.5rem); keyboard stayed over the next tab after editing Settings (`blur()` on tab switch); Android painted controls in Material You primary (root `accent-color="brand.accent"`).
 - [x] T2 Verify web, iOS and Android; review screenshots light and dark. Route: inline per-action. Evidence: after parent polish (hero as inset rounded card, bolder greeting, US "Color"): `make verify` clean; `make verify-ios` 11/11, 0 findings incl. largest text; `make verify-android` 11/11, screenshots reviewed (glass renders as translucent tint, no blur, on Android).
 
 ## Acceptance criteria
@@ -55,6 +56,8 @@ lists, a thin progress bar and no brand colour. The user asked for a modern
 - 2026-11-13 T1 done (writer). RED: `make test` 6 passed, 5 failed (no `color` field, no chip/swatch testIds, greeting). GREEN: 11 passed. `make check` `[]`; `make verify` clean (0 findings); `bun exact.mjs verify ios` clean (0 findings, 11 tests). Makefile bug found by the writer (`$(RUN)` repeated `cd mobile &&` in test-ios/verify-ios) fixed by the parent.
 - Test steps changed on purpose: status select -> `tap chip-*`; greeting "Hello, Ada" -> "Good afternoon, Ada" (time-of-day greeting requested).
 
+- 2026-11-13 T3 rationale (research, Apple HIG Color/Materials fetched directly, Dec 2025): Liquid Glass has no colour of its own and takes it from the backdrop; tint sparingly, not on many controls; dark tint over a saturated mid-tone gives muddy grey; blue-violet reads as the generic "AI gradient". Task-app/trend sources were search snippets only (weak evidence).
+
 ## Next step
 
-Done. Possible follow-ups: restyle the add/edit task sheet; motion on chip selection.
+Done. Alternatives researched but not applied: "Sage Calm" (green) and "Midnight Aurora" (deep navy hero); switching is a palette-only edit in `mobile/app.tamber`.

@@ -1,28 +1,37 @@
 tamber exacttodo
 
+// "Warm Paper": warm neutrals, one terracotta accent, a soft peach mesh behind the glass.
+// Glass takes its colour from what is behind it (HIG Materials), so the hero stays light
+// in light mode and deep in dark mode, and the glass is tinted with white, never slate.
+
 theme
-  AccentColor = light-dark(#2f6bea, #4a82ee)
-  brand.blue = light-dark(#3d7bf7, #6a9bff)
-  brand.violet = light-dark(#7b5cf5, #9c86ff)
-  hero.start = light-dark(#2f6bea, #1f3a8a)
-  hero.end = light-dark(#6b4ce6, #4a2c9b)
-  ink.on-hero = #ffffff  scheme=fixed
-  ink.on-hero-soft = rgba(255, 255, 255, 0.82)  scheme=fixed
-  surface.page = light-dark(#f3f5fc, #0b0d14)
-  surface.card = light-dark(#ffffff, #171a24)
-  text.primary = light-dark(#10131c, #f2f4fa)
-  text.secondary = light-dark(#5b6275, #a3a9bb)
-  glass.tint = rgba(14, 22, 84, 0.62)  scheme=fixed
-  alert.glass = rgba(150, 14, 40, 0.72)  scheme=fixed
-  cat.blue = light-dark(#3d7bf7, #6a9bff)
-  cat.violet = light-dark(#7b5cf5, #9c86ff)
-  cat.pink = light-dark(#d93a8f, #ff6fb5)
-  cat.orange = light-dark(#d9730d, #ffa94d)
-  cat.green = light-dark(#1b8f5c, #3dd598)
-  cat.teal = light-dark(#0e8fa3, #3cc9de)
-  cat.blue.tint = color-mix(in oklab, cat.blue 16%, surface.card)
-  cat.violet.tint = color-mix(in oklab, cat.violet 16%, surface.card)
-  cat.pink.tint = color-mix(in oklab, cat.pink 16%, surface.card)
-  cat.orange.tint = color-mix(in oklab, cat.orange 16%, surface.card)
-  cat.green.tint = color-mix(in oklab, cat.green 16%, surface.card)
-  cat.teal.tint = color-mix(in oklab, cat.teal 16%, surface.card)
+  AccentColor = light-dark(#c2410c, #e8692e)
+  // Android paints controls in the device's Material You primary unless a node sets accent-color.
+  brand.accent = light-dark(#c2410c, #e8692e)
+  surface.page = light-dark(#f6f3ee, #151210)
+  surface.card = light-dark(#ffffff, #211d1a)
+  text.primary = light-dark(#1f1b16, #f5eee8)
+  text.secondary = light-dark(#6b645a, #b3a89c)
+  danger = light-dark(#c62828, #ff6b6b)
+
+  hero.base = light-dark(#ffe3cf, #4a2618)
+  hero.glow1 = light-dark(#ffb68a, #8a4526)
+  hero.glow2 = light-dark(#ffd9e0, #6b2d45)
+  hero.glow3 = light-dark(#fff1d6, #3a2a1a)
+  ink.on-hero = light-dark(#2a1a12, #fff4ea)
+  ink.on-hero-soft = light-dark(#5c4636, #e9d6c6)
+  ink.on-color = light-dark(#ffffff, #1a1410)
+  glass.tint = light-dark(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.10))
+
+  cat.blue = light-dark(#1c6fd0, #7aaeff)
+  cat.violet = light-dark(#6d45e0, #b7a0ff)
+  cat.pink = light-dark(#c2255c, #ff8ab3)
+  cat.orange = light-dark(#b45309, #fbbf24)
+  cat.green = light-dark(#2b8a3e, #5fd38d)
+  cat.teal = light-dark(#0c8599, #4dd0e1)
+  cat.blue.tint = color-mix(in oklab, cat.blue 14%, surface.card)
+  cat.violet.tint = color-mix(in oklab, cat.violet 14%, surface.card)
+  cat.pink.tint = color-mix(in oklab, cat.pink 14%, surface.card)
+  cat.orange.tint = color-mix(in oklab, cat.orange 14%, surface.card)
+  cat.green.tint = color-mix(in oklab, cat.green 14%, surface.card)
+  cat.teal.tint = color-mix(in oklab, cat.teal 14%, surface.card)
