@@ -43,7 +43,7 @@ geolocation for Apple, Android and web (`~/.exact/exact2/packages/geolocation`).
 - [x] T1 Branch `feat/exact-geolocation` from `feat/exact-todo` (3b93d6c); this document. Route: inline (mechanical).
 - [x] T2 Baseline sizes: release iOS simulator .app (and stripped main binary) and Android release APK (per ABI) of the current app, built the way the measured comparison used. Route: delegated writer (same as T3). Evidence below; cd4995b (Android needs `deploy.store.linux: "0"`).
 - [x] T3 Location card with tests first, `@exact/geolocation` added, iOS and Android builds; sizes after, measured the same way. Route: delegated writer. Evidence below; 443412d.
-- [ ] T4 Verify on the iOS Simulator and the Android emulator with a simulated position (granted, denied, location off); compare with the NSH spike. Route: inline per-action.
+- [x] T4 Verify on the iOS Simulator and the Android emulator with a simulated position (granted, denied, location off); compare with the NSH spike. Route: inline per-action.
 
 ## Acceptance criteria
 
@@ -75,7 +75,21 @@ geolocation for Apple, Android and web (`~/.exact/exact2/packages/geolocation`).
   - Authored lines (git diff --numstat, plus new files): app.contract +23, app.test.contract +12, app.ts +1/-1, package.json +3/-1, Makefile +4/-1, new app.test.mjs 49, strings/en.json 3, bun.lock 15 (generated); about 95 authored, 110 with the lockfile.
   - Not verified: behaviour on the iOS Simulator and Android emulator (T4); the real iOS prompt text; macOS and web in a browser.
 
+- 2026-11-14 T4 (parent, inline per-action):
+  - iOS 26.5 Simulator (iPhone 17 Pro), `EXACT_SIM=<udid> make ios` (development standalone build, 22.4 s),
+    position `40.41680,-3.70380`: the system prompt shows "Exact Todo shows your current position in Settings.";
+    "Don't Allow" -> "Location permission denied. Allow it in the system settings."; after `simctl privacy grant`
+    -> "Latitude 40.41680 / Longitude -3.70380 / Accuracy 5 m". The development build carries the usage string,
+    so the API works in the dev loop (the NSH development host did not).
+  - Android API 35 emulator, release APK (`adb install -r .../app-release.apk`): the prompt offers Precise and
+    Approximate; "Don't allow" -> denied message; after `pm grant` -> same position, accuracy 5 m; location off
+    -> "Location services are off. Turn them on and try again."
+  - Compared with the NSH spike (`../nsh_mobile`, `feat/nsh-geolocation`): Exact needed no native code and no
+    project files (about 95 authored lines, most of them tests) and grew the iOS app by 0.57 MB (+3.7%) and the
+    Android APK by 8 KB; NSH needed Swift and Kotlin bridges (or a Rust crate on iOS) plus Xcode and Gradle
+    projects, with +0.74 MB on iOS through the crate.
+- [x] T4 ticked after this verification.
+
 ## Next step
 
-T4: verify on the iOS Simulator and the Android emulator with a simulated position (granted,
-denied, location off).
+Done.
