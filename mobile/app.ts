@@ -1,7 +1,7 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
 
 const FILE = 'app:/data/todo.json';
-export const grants = [`fs.read ${FILE}`, `fs.write ${FILE}`].join('\n');
+export const grants = [`fs.read ${FILE}`, `fs.write ${FILE}`, 'device.geolocation purpose.locationPurpose'].join('\n');
 
 type Task = Result<'loadTasks'>[number];
 type Category = Result<'loadCategories'>[number];

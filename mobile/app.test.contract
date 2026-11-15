@@ -214,3 +214,15 @@ test "tasks and the name survive a reload"
   clock data
   expect state tasks.0 .title == "Keep me"
   expect state name == "Ada"
+
+// Under the Contract runner nothing answers a device request: the position request waits
+// on a permission ticket. A granted or denied permission and a preferred position are an
+// agent drive's (app.test.mjs, `make test-location`).
+test "the location card is idle until asked, then waits for the device"
+  tap "tab-settings"
+  expect enabled "location-button"
+  expect tree missing "location-latitude"
+  expect tree missing "location-message"
+  tap "location-button"
+  expect disabled "location-button"
+  expect tree missing "location-message"

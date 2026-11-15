@@ -3,6 +3,7 @@
 // "Overdue" read the date from the clock the root keeps (`dates-and-days`), so the day
 // logic lives here in plain functions that tests drive with `epoch`.
 use EmptyState, RingProgress from "exact:content"
+use getCurrentPosition, GeolocationPosition from "@exact/geolocation"
 
 routes nav
   tab home "/"
@@ -73,6 +74,7 @@ component App
   mutation toggled as shape Reply queue refreshes tasks
   mutation removed as shape Reply queue refreshes tasks
   mutation catAdded as shape Reply queue refreshes categories then afterCat
+  mutation located as shape GeolocationPosition
   derive today = formatDate(time.epochAtZero + now, time.utcOffset, "iso")
   derive shown = tasks.filter(t => passes(t, filter, catFilter, today))
   derive todayTasks = tasks.filter(t => isToday(t, today))
@@ -84,6 +86,12 @@ component App
   derive greeting = name.trim() == "" ? "Hello" : `${salutation(hour)}, ${name.trim()}`
   derive todayFraction = todayTasks.length == 0 ? 0 : todayDone / todayTasks.length
   derive catError = match catAdded { case some(r) => r.error, case none => "" }
+  derive locationCode = match failure(located) { case some(f) => f.code, case none => "" }
+  derive locationMessage = locationCode == "" ? "" : locationCode == "PERMISSION_DENIED" ? "Location permission denied. Allow it in the system settings." : locationCode == "POSITION_UNAVAILABLE" ? "Location services are off. Turn them on and try again." : `Could not get the location: ${locationCode}`
+  derive here = locationCode == "" ? located : none
+  derive latText = match here { case some(p) => `Latitude ${p.coords.latitude.toFixed(5)}`, case none => "" }
+  derive lonText = match here { case some(p) => `Longitude ${p.coords.longitude.toFixed(5)}`, case none => "" }
+  derive accText = match here { case some(p) => `Accuracy ${round(p.coords.accuracy)} m`, case none => "" }
   task tick mount
     every(60000, step)
   action step
@@ -101,6 +109,8 @@ component App
     catFilter = v
   action setName(v: string)
     name = v
+  action showLocation
+    send located = getCurrentPosition(enableHighAccuracy=true, maximumAge=0)
   action openAddTask
     nav = push(nav, "/new-task")
   action commitTask(id: string, title: string, notes: string, categoryId: string, due: string, time: string)
@@ -383,6 +393,19 @@ component App
                             min-width=0
                         footer
                           text "Shown in the greeting on Home."
+                      section
+                        header
+                          text "Location"
+                        row
+                          button press=showLocation disabled=pending(located) testId="location-button"
+                            text "Show my location"
+                        if latText != ""
+                          column gap=4
+                            text latText font="-exact-body" color="text.primary" testId="location-latitude"
+                            text lonText font="-exact-body" color="text.primary" testId="location-longitude"
+                            text accText font="-exact-footnote" color="text.secondary" testId="location-accuracy"
+                        if locationMessage != ""
+                          text locationMessage font="-exact-footnote" color="danger" testId="location-message"
       row role="tablist" testId="tabs"
         for t in nav.tabs key=t.name
           button role="tab"
