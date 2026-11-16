@@ -21,7 +21,7 @@ export EXACT := $(EXACT_SDK)
 RUN := cd $(APP_DIR) && bun exact.mjs
 
 .PHONY: help bun sdk setup setup-android doctor sdk-update types check fmt \
-        web test test-config test-location test-ios test-android verify verify-ios verify-android \
+        web test test-config test-storage test-location test-ios test-android verify verify-ios verify-android \
         ios ios-prebuild android android-bundle emulator mac share clean
 
 help: ## List every target
@@ -73,6 +73,9 @@ test: ## Run the Contract tests on the web host
 
 test-config: ## Check the manifest's launch colours and icons against the brand
 	cd $(APP_DIR) && bun test app.config.test.mjs
+
+test-storage: ## Run the data module against a fake storage: SQLite and the one-time JSON import (bun:sqlite)
+	cd $(APP_DIR) && bun test app.storage.test.mjs
 
 test-location: ## Drive the Location card with a preferred permission and position (agent, web host)
 	$(RUN) web-build && bun test app.test.mjs

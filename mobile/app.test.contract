@@ -249,6 +249,36 @@ test "tasks and the name survive a reload"
   expect state tasks.0 .title == "Keep me"
   expect state name == "Ada"
 
+test "a category and a done task survive a reload"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-categories"
+  tap "add-category"
+  clock settle
+  tap "swatch-orange"
+  type "cat-name" "Errands"
+  tap "cat-save"
+  clock data
+  clock settle
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Keep me"
+  type "form-category" "4"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "done-1"
+  clock data
+  reload
+  clock +1600
+  clock data
+  expect state categories.3 .name == "Errands"
+  expect state categories.3 .color == "orange"
+  expect state tasks.0 .categoryId == "4"
+  expect state tasks.0 .done == true
+
 // Under the Contract runner nothing answers a device request: the position request waits
 // on a permission ticket. A granted or denied permission and a preferred position are an
 // agent drive's (app.test.mjs, `make test-location`).
