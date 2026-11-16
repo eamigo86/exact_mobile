@@ -50,7 +50,7 @@ Out of scope: other symbols or intervals, order books, web and desktop checks.
 
 - [x] T1 Branch and this document. Route: inline (mechanical).
 - [x] T2 Market tab, data feed, chart drawing and interaction, tests first for the data and gesture maths. Route: delegated writer (several new files).
-- [ ] T3 Verify on the iOS Simulator and the Android emulator: live updates, zoom, pan, reset, crosshair, reconnect, light and dark. Route: inline per-action.
+- [x] T3 Verify on the iOS Simulator and the Android emulator: live updates, zoom, pan, reset, crosshair, reconnect, light and dark. Route: inline per-action.
 
 ## Delivery
 
@@ -80,3 +80,20 @@ Out of scope: other symbols or intervals, order books, web and desktop checks.
 - Doc gaps: no statement on Android sockets, no multi-touch pointer story, no OS fact.
 - Smoothness: view recomputes the visible window (60 to 200 candles, about 1 ms of work) on every tick or pointer move; commits coalesce ticks. Not measured on device.
 - Lines: chart.ts 179, chart.test.mjs 126, app.market.test.mjs 69, app.ts +48, app.contract +252 (shapes, fns, state, tasks, actions, view), app.tamber +3, Contract tests +70.
+
+## T3 device verification (2026-11-16)
+
+iPhone 17 Pro Simulator (iOS 26.5, `make ios`, dark) and Pixel 9 Pro XL emulator (API 35, `make android`, dark).
+
+| Check | iOS | Android |
+|---|---|---|
+| History + live WebSocket | Live; price changes between frames | Live (the socket works on Android; the polling fallback did not engage) |
+| Candles, volume, axes, last-price line | yes | yes |
+| One-finger pan | yes (scrolls back in history) | yes |
+| +/− and Latest | yes | yes |
+| Long-press crosshair with OHLC + volume | yes (follows the finger, hides on lift) | yes (a stationary hold; moving more than 8 px first starts a pan, as designed) |
+| Two-finger pinch | NO: a two-finger gesture never reaches the view as two pointers (count unchanged) | not verifiable: no way to inject two fingers on the emulator (`sendevent` denied by SELinux, console events not delivered) |
+| Double-tap reset | not verifiable with the simulator tool (two taps arrive too far apart) | not tried |
+
+- Android sockets: the docs list TypeScript sockets for web, macOS, iOS and Linux only, but `wss://` worked on Android 15 (API 35).
+- Pinch: Exact has no pinch gesture and, on iOS, the view gets one pointer for two fingers, so the two-pointer maths never runs. The +/− buttons are the working zoom.
