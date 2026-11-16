@@ -38,7 +38,7 @@ crate) to compare offline/local-database support (2026-11-16 request).
 
 - [x] T1 Branch and this document. Route: inline (mechanical).
 - [x] T2 SQLite storage behind the existing sources, one-time JSON import, tests first. Route: delegated writer (data module, tests, manifest).
-- [ ] T3 Verify on the iOS Simulator and the Android emulator: upgrade from the JSON build keeps the data, add/edit/toggle/delete, relaunch; inspect the database file. Route: inline per-action.
+- [x] T3 Verify on the iOS Simulator and the Android emulator: upgrade from the JSON build keeps the data, add/edit/toggle/delete, relaunch; inspect the database file. Route: inline per-action.
 
 ## Acceptance criteria
 
@@ -83,3 +83,15 @@ crate) to compare offline/local-database support (2026-11-16 request).
 - iOS/Android: both build with `--no-install`; behaviour on devices is for T3.
 - Size: `app.ts` +94/-35 lines (net data layer about the same size); tests +30 lines Contract, ~100 lines
   `app.storage.test.mjs`; Makefile +4 lines; no manifest or contract change.
+
+## T3 device verification (2026-11-16)
+
+- iOS (iPhone 17 Pro Simulator, iOS 26.5): before the upgrade the JSON build held 4 categories (one custom, "Errands")
+  and 3 tasks (seeded into `app:/data/todo.json`). After `make ios` over it: `.../Library/Application Support/exact/
+  com.example.exacttodo/data/todo.db` exists, `PRAGMA user_version` = 1, `categories` 4 rows and `tasks` 3 rows with
+  the same ids, dates, times and done flags, and `todo.json.bak` beside it. The Tasks tab shows them. Toggling
+  "Buy groceries" set `done = 1` in the database at once, and it survived a relaunch.
+- Android (Pixel 9 Pro XL emulator, API 35): two tasks created in the JSON build through the UI; after `make android`
+  over it both are listed; a toggle survived a relaunch. The database file could not be inspected (release build, not
+  debuggable; the emulator image has no root).
+- No fixes were needed.
