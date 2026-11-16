@@ -9,6 +9,9 @@ const text = (s, id) => s.carrier.evaluate(`document.querySelector('[data-testid
 async function card(facts) {
   const s = await open({ host: 'web', app: import.meta.dir, storage: 'location-test', env: { EXACT_AGENT_EPHEMERAL_PORT: '1' } });
   await s.prefer(facts);
+  await s.clock('+1600'); // the splash
+  await s.tap('onb-skip'); // a fresh store opens on onboarding
+  await s.clock('settle');
   await s.tap('tab-settings');
   await s.tap('location-button');
   await s.clock('settle');

@@ -1,16 +1,25 @@
 test "default categories are seeded"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   clock data
   expect state categories.0 .name == "Home"
   expect state categories.1 .name == "Work"
   expect state categories.2 .name == "Personal"
 
 test "seeded categories have distinct colours"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   clock data
   expect state categories.0 .color == "blue"
   expect state categories.1 .color == "violet"
   expect state categories.2 .color == "pink"
 
 test "a category stores the colour picked in its sheet"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-categories"
   tap "add-category"
   clock settle
@@ -24,6 +33,9 @@ test "a category stores the colour picked in its sheet"
   expect tree has "card-4"
 
 test "a category added without picking gets the default colour"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-categories"
   tap "add-category"
   clock settle
@@ -34,6 +46,9 @@ test "a category added without picking gets the default colour"
   expect state categories.3 .color == "blue"
 
 test "a task is added, an empty title refused"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-tasks"
   tap "add-task"
   clock settle
@@ -50,6 +65,9 @@ test "a task is added, an empty title refused"
   expect state tasks.0 .notes == "Two litres"
 
 test "a task is toggled done and deleted"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-tasks"
   tap "add-task"
   clock settle
@@ -66,6 +84,9 @@ test "a task is toggled done and deleted"
   expect tree missing "task-1"
 
 test "a task is edited through its sheet"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-tasks"
   tap "add-task"
   clock settle
@@ -88,6 +109,9 @@ test "a task is edited through its sheet"
 test "filters narrow the list by status and category"
   epoch "2026-03-15T12:00:00Z"
   time-zone "UTC"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-tasks"
   tap "add-task"
   clock settle
@@ -140,6 +164,9 @@ test "filters narrow the list by status and category"
   expect tree has "task-3"
 
 test "a category is added with a count, a duplicate refused"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-tasks"
   tap "add-task"
   clock settle
@@ -170,6 +197,9 @@ test "a category is added with a count, a duplicate refused"
 test "the settings name greets on Home, and Home counts"
   epoch "2026-03-15T12:00:00Z"
   time-zone "UTC"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   clock data
   expect text "greeting" == "Hello"
   tap "tab-settings"
@@ -201,6 +231,9 @@ test "the settings name greets on Home, and Home counts"
   expect tree missing "upnext-2"
 
 test "tasks and the name survive a reload"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-settings"
   type "settings-name" "Ada"
   tap "tab-tasks"
@@ -211,6 +244,7 @@ test "tasks and the name survive a reload"
   clock data
   clock settle
   reload
+  clock +1600
   clock data
   expect state tasks.0 .title == "Keep me"
   expect state name == "Ada"
@@ -219,6 +253,9 @@ test "tasks and the name survive a reload"
 // on a permission ticket. A granted or denied permission and a preferred position are an
 // agent drive's (app.test.mjs, `make test-location`).
 test "the location card is idle until asked, then waits for the device"
+  clock +1600
+  tap "onb-skip"
+  clock settle
   tap "tab-settings"
   expect enabled "location-button"
   expect tree missing "location-latitude"
@@ -226,3 +263,101 @@ test "the location card is idle until asked, then waits for the device"
   tap "location-button"
   expect disabled "location-button"
   expect tree missing "location-message"
+
+// Splash and onboarding. Every test starts from an empty store, as a fresh install does.
+test "a fresh launch shows the splash, then the first onboarding step"
+  expect tree has "splash"
+  expect tree missing "onboarding"
+  clock +1600
+  expect tree missing "splash"
+  expect tree has "onboarding"
+  expect text "onb-title" == "Capture it all"
+  expect text "onb-next" == "Next"
+
+test "Next walks the four steps, the last offers Get started"
+  clock +1600
+  tap "onb-next"
+  clock settle
+  expect text "onb-title" == "Sort by category"
+  tap "onb-next"
+  clock settle
+  expect text "onb-title" == "Never miss a time"
+  tap "onb-next"
+  clock settle
+  expect text "onb-title" == "Watch progress grow"
+  expect text "onb-next" == "Get started"
+  tap "onb-back"
+  clock settle
+  expect text "onb-title" == "Never miss a time"
+
+test "a dot jumps to its step"
+  clock +1600
+  tap "onb-dot-2"
+  clock settle
+  expect state step == 2
+  expect text "onb-title" == "Never miss a time"
+
+test "Skip lands on the tabs and the next launch skips onboarding"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  expect tree missing "onboarding"
+  expect state onboarded == true
+  reload
+  expect tree has "splash"
+  clock +1600
+  expect tree missing "splash"
+  expect tree missing "onboarding"
+
+test "Get started on the last step marks onboarding done"
+  clock +1600
+  tap "onb-dot-3"
+  clock settle
+  tap "onb-next"
+  clock settle
+  expect tree missing "onboarding"
+  expect state onboarded == true
+
+test "reduced motion keeps the splash short and plain"
+  prefer prefers-reduced-motion reduce
+  clock +1000
+  expect tree missing "splash"
+  expect tree has "onboarding"
+
+test "Settings shows the onboarding again, Skip returns to Settings"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-settings"
+  tap "show-onboarding"
+  clock settle
+  expect tree has "onboarding"
+  expect text "onb-title" == "Capture it all"
+  tap "onb-skip"
+  clock settle
+  expect tree missing "onboarding"
+  expect state onboarded == true
+  expect text "settings-title" == "Settings"
+
+test "the appearance choice is kept across a relaunch"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-settings"
+  expect state scheme == "system"
+  tap "scheme-dark"
+  expect state scheme == "dark"
+  reload
+  clock +1600
+  expect state scheme == "dark"
+  tap "scheme-light"
+  expect state scheme == "light"
+
+test "swiping left and right changes the step"
+  clock +1600
+  tap "onb-content" drag -140 0 mouse
+  clock settle
+  expect state step == 1
+  tap "onb-content" drag 140 0 mouse
+  clock settle
+  expect state step == 0
