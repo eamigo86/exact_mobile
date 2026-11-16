@@ -505,7 +505,8 @@ component App
                         row
                           button press=showOnboarding testId="show-onboarding"
                             text "Show onboarding again"
-      row role="tablist" testId="tabs" inert=covered
+      // Android draws the root tablist as a native bar that the overlays do not cover, so it hides while they show.
+      row role="tablist" testId="tabs" inert=covered display=(covered ? "none" : "flex")
         for t in nav.tabs key=t.name
           button role="tab"
             aria-controls=`panel-${t.name}`
