@@ -45,7 +45,7 @@ quality, lines of code, difficulty and limitations (2026-11-16 request).
 - [x] T2 Brand assets and native launch: logo and icon SVG/PNG, `background_color` light and dark, app icons (no `launchImage`: colour only on both platforms, decided by the requester). Route: delegated writer (T2-T4, one writer, trigger: 2+ non-trivial files).
 - [x] T3 Animated in-app splash and the 4-step onboarding, tests first. Route: delegated writer.
 - [x] T4 Settings: "Show onboarding" and Appearance (System/Light/Dark, persisted, applied at launch), tests first. Route: delegated writer.
-- [ ] T5 Verify on the iOS Simulator and the Android emulator: first launch, skip, reopen, theme switch in light and dark; screenshots; lines of code. Route: inline per-action.
+- [x] T5 Verify on the iOS Simulator and the Android emulator: first launch, skip, reopen, theme switch in light and dark; screenshots; lines of code. Route: inline per-action.
 
 ## Acceptance criteria
 
@@ -119,3 +119,30 @@ Lines (authored; `git diff --stat`)
   about 20) and about 185 logic, layout, keyframes and Settings; app.test.contract +135 (about 60 are the
   existing-test preludes and fixes, about 75 new tests); app.test.mjs +3.
 - Total Contract source added: about 450 plus 26 JS config test.
+
+## T5 device verification (2026-11-16)
+
+iPhone 17 Pro Simulator (iOS 26.5, `make ios`) and Pixel 9 Pro XL emulator (API 35, `make android`), fresh installs.
+Launches recorded (`simctl io recordVideo`, the emulator's `screenrecord`) and read frame by frame.
+
+- iOS: the splash plays as designed (tile pop, lines and check drawn by dash offset, name, fade) and hands over to
+  onboarding. A real finger swipe, Next, Back, Skip, dots and Get started work. Settings: Appearance is a native
+  `UISegmentedControl`; Dark applies at once (status bar and tab bar included) and survives a relaunch; the splash then
+  plays in dark. "Show onboarding again" opens step 1 and Skip returns to Settings.
+- Bug found and fixed (d13372c): the overlays ignored the safe area (Skip under the status bar, Next on the home
+  indicator). `env(safe-area-inset-*)` is 0 there (documented pitfall); `var(--exact-safe-area-inset-*)` works.
+- Bug found and fixed (233d652): on Android the root `tablist` is a native bar that the overlays do not cover (the docs
+  say later root children paint over the native bars on every host), so it hid Next. The tablist now gets
+  `display="none"` while the splash or onboarding shows (the documented way to hide it).
+- iOS launch screen: white (#ffffff) on the simulator, although Info.plist has `UILaunchScreen.UIColorName` and the
+  asset catalog holds #f6f3ee / #151210. Clearing the app's SplashBoard snapshot did not change it. Not checked on a
+  device.
+- Android launch window: the page colour, no system icon, then the splash (first display 0.85 s warm).
+- Android: the check mark's `stroke-dashoffset` keyframes do not animate (a static partial stroke, then the end state);
+  the other keyframes (scale, opacity, translate) animate.
+- Android with Dark chosen and a light device: the launch window is light and the splash shows only its last frame
+  (its entrance is lost while the scheme is re-applied at launch). Reproduced twice.
+- Android light: the status and navigation bars keep the system surface colour instead of the page colour.
+
+Lines (authored, without art masters and docs): app.contract +315 (about 130 inline-SVG art, about 185 logic and
+layout), app.json +18, tests +164 (Contract 135, JS 29), Makefile +4.
