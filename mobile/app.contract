@@ -656,7 +656,8 @@ component Onboarding
     column testId="onboarding" position="absolute" inset=0 display="flex" flex-direction="column"
       background-color="surface.page"
       -exact-exit-animation=(still ? "none" : "fadeOut 200ms ease-in both")
-      row padding="8px 16px" align-items="center" min-height=44
+      // The overlay covers the whole screen, so its own bars keep clear of the status bar and home indicator.
+      row padding="8px 16px" padding-top="calc(var(--exact-safe-area-inset-top) + 8px)" align-items="center" min-height=44
         column flex=1 align-items="flex-start"
           if step > 0
             button press=back buttonStyle="plain" testId="onb-back"
@@ -696,7 +697,7 @@ component Onboarding
               opacity=(i == step ? 1 : 0.35)
               -exact-layout-transition=(still ? "none" : "200ms ease")
               transition=(still ? "none" : "opacity 200ms ease")
-      button press=next buttonStyle="filled" margin="16px 24px 24px 24px" testId="onb-next"
+      button press=next buttonStyle="filled" margin="16px 24px 24px 24px" margin-bottom="calc(var(--exact-safe-area-inset-bottom) + 16px)" testId="onb-next"
         text (step == 3 ? "Get started" : "Next")
 
 // Onboarding step 1, from assets/brand/step1-capture.svg.
