@@ -35,7 +35,7 @@ app (`../nsh_mobile`, branch `feat/nsh-avatar`) to compare both frameworks (2026
 
 - [x] T1 Branch and this document. Route: inline (mechanical).
 - [x] T2 Avatar pick, crop/resize, persist and remove in Settings; avatar and "Hello, <name>" on Home; tests first. Route: delegated writer (2+ non-trivial files: app.contract, app.ts, tests).
-- [ ] T3 Verify on the iOS Simulator and the Android emulator: pick, cancel, relaunch, remove, light and dark. Route: inline per-action.
+- [x] T3 Verify on the iOS Simulator and the Android emulator: pick, cancel, relaunch, remove, light and dark. Route: inline per-action.
 
 ## Acceptance criteria
 
@@ -78,3 +78,21 @@ app (`../nsh_mobile`, branch `feat/nsh-avatar`) to compare both frameworks (2026
 - iOS/Android differences: none seen at build time; the Android picker is the system Photo Picker for `image/*`.
 - Lines: contract 67, data module 27, tests 81, total about 175 plus the fixture.
 - Staged `.atl/skill-registry.md` once by accident and unstaged it before the commit.
+
+## T3 device verification (2026-11-16)
+
+iPhone 17 Pro Simulator (iOS 26.5, `make ios`) and Pixel 9 Pro XL emulator (API 35, `make android`), a test portrait
+and the simulator's sample landscape photos.
+
+- iOS: "Choose photo" and the avatar open PHPicker (tinted with the app accent); cancel keeps the photo; a landscape
+  photo is centre-cropped; Home shows the avatar before "Hello, Ada"; Remove restores the symbol; the photo survives a
+  relaunch.
+- Bug found and fixed (66803dc): in Settings the photo did not show. (1) A native `button` draws only text and symbols
+  on iOS, so the photo inside it was empty: the avatar is now a `column role="button" press=...`. (2) In the
+  inset-grouped list row the picture did not change after a new pick until a relaunch (keying the `image` alone did not
+  help): the profile row is now keyed by the photo path (`for a in [avatar] key=a`). Home, outside the list, updated at
+  once.
+- Android: the system Photo Picker opens (no permission); Settings and Home update at once; the photo survives a
+  relaunch.
+
+Lines (authored, final): app.contract +61/-15, app.ts +26/-1 (production about 87 added), tests +80, a 5 KB fixture.
