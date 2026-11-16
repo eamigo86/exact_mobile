@@ -1,4 +1,4 @@
-// Exact Todo: four tabs (Home, Tasks, Categories, Settings). Tasks and categories are
+// Exact Todo: five tabs (Home, Tasks, Categories, Market, Settings). Tasks and categories are
 // app.ts's (app:/data/todo.json); the display name is a persisted setting. "Today" and
 // "Overdue" read the date from the clock the root keeps (`dates-and-days`), so the day
 // logic lives here in plain functions that tests drive with `epoch`.
@@ -12,6 +12,7 @@ routes nav
     editTask "/task/:id"
   tab categories "/categories"
     addCategory "/new-category"
+  tab market "/market"
   tab settings "/settings"
 
 shape Task
@@ -46,6 +47,55 @@ shape Time
   epochAtZero: number
   utcOffset: number
 
+shape Page
+  onLine: bool
+
+// Market: app.ts keeps the BTC-USD candles; the feed and the history answer a counter, and the
+// view is what chart.ts draws for the size, zoom and crosshair (paths and labels, never one node per candle).
+shape Mark
+  pos: number
+  text: string
+
+shape Feed
+  status: string
+  seq: number
+  price: number
+
+shape Loaded
+  ok: bool
+  error: string
+  seq: number
+
+shape ChartView
+  ready: bool
+  upBody: string
+  upWick: string
+  downBody: string
+  downWick: string
+  upVol: string
+  downVol: string
+  grid: string
+  priceMarks: Mark[]
+  timeMarks: Mark[]
+  plotW: number
+  plotH: number
+  slot: number
+  firstT: number
+  lastT: number
+  lastY: number
+  lastText: string
+  lastUp: bool
+  priceText: string
+  changeText: string
+  changeUp: bool
+  crossOn: bool
+  crossX: number
+  crossY: number
+  crossPrice: string
+  readTime: string
+  readOhlc: string
+  readVol: string
+
 fn isOverdue(t: Task, today: string): bool = not t.done and t.due != "" and t.due < today
 fn isToday(t: Task, today: string): bool = t.due == today
 fn passes(t: Task, status: string, cat: string, today: string): bool =
@@ -59,7 +109,19 @@ fn catToken(cats: Category[], id: string): string = match first(cats.filter(c =>
 fn chipLabel(k: string): string = k == "all" ? "All" : k == "active" ? "Active" : k == "done" ? "Done" : k == "today" ? "Today" : "Overdue"
 fn colorLabel(k: string): string = k == "blue" ? "Blue" : k == "violet" ? "Violet" : k == "pink" ? "Pink" : k == "orange" ? "Orange" : k == "green" ? "Green" : "Teal"
 fn initial(name: string): string = name.trim() == "" ? "" : name.trim().slice(0, 1).toUpperCase()
-fn tabTitle(name: string): string = name == "home" ? "Home" : name == "tasks" ? "Tasks" : name == "categories" ? "Categories" : "Settings"
+fn tabTitle(name: string): string = name == "home" ? "Home" : name == "tasks" ? "Tasks" : name == "categories" ? "Categories" : name == "market" ? "Market" : "Settings"
+
+// Chart gesture maths. Contract cannot call app.ts, so these mirror chart.ts, where they are tested
+// (make test-chart). `end` is the time of the candle on the right edge, 0 following the latest.
+fn clampCount(n: number): number = min(200, max(20, n))
+fn pinchDist(ax: number, ay: number, bx: number, by: number): number = max(max(ax - bx, bx - ax), max(ay - by, by - ay))
+fn pinchCount(c0: number, d0: number, d: number): number = clampCount(round(c0 * d0 / max(d, 1)))
+fn zoomEnd(e: number, last: number, c0: number, c1: number, f: number): number = (e > 0 ? e : last) + (1 - f) * (c1 - c0) * 60
+fn panEnd(e: number, dx: number, slot: number): number = e - dx / slot * 60
+fn clampEnd(e: number, first: number, last: number, count: number): number = e >= last ? 0 : max(e, min(first + (count - 1) * 60, last))
+fn backoffSecs(r: number): number = r <= 0 ? 1 : r == 1 ? 2 : r == 2 ? 4 : r == 3 ? 8 : r == 4 ? 16 : 30
+fn candlesText(n: number): string = n == 1 ? "1 candle" : `${n} candles`
+fn statusToken(s: string): string = s.startsWith("Live") ? "up" : s == "Offline" ? "down" : "text.secondary"
 
 // Splash and onboarding motion. `both` holds the first frame through a delay and the last after.
 keyframes logoPop
@@ -106,11 +168,38 @@ component App
   state onboarded = false persist
   state scheme = "system" persist
   state step = 0
+  state attempt = 0
+  state histKey = 0
+  state retries = 0
+  state waited = 0
+  state chartW = 0
+  state chartH = 0
+  state count = 60
+  state endT = 0
+  state crossOn = false
+  state crossX = 0
+  state crossY = 0
+  state gMode = "none"
+  state gA = -1
+  state gAx = 0
+  state gAy = 0
+  state gB = -1
+  state gBx = 0
+  state gBy = 0
+  state gStart = 0
+  state gEnd0 = 0
+  state gCount0 = 60
+  state gDist0 = 1
   state replay = false
   state splash = true
   state leaving = false
   resource media = exactViewport() as shape Media
   resource time = exactTime() as shape Time
+  resource page = exactPage() as shape Page else empty(onLine=true)
+  // Market: connected only while its tab shows. The socket is let go when marketOn turns false.
+  resource live = marketFeed(attempt) when marketOn as shape Feed else empty(status="idle")
+  resource history = marketHistory(histKey, marketOn) as shape Loaded else empty()
+  resource view = chartView(chartW, chartH, count, endT, crossOn, crossX, crossY, live.seq + history.seq, time.utcOffset) as shape ChartView else empty()
   resource tasks = loadTasks() as shape Task[] else empty()
   resource categories = loadCategories() as shape Category[] else empty()
   mutation saved as shape Reply queue refreshes tasks
@@ -132,6 +221,12 @@ component App
   derive still = media.prefersReducedMotion
   derive onboarding = (not onboarded or replay) and (leaving or not splash)
   derive covered = splash or onboarding
+  derive marketOn = nav.tab == "market" and not covered
+  derive socketUp = live.status == "live"
+  derive socketDown = marketOn and (live.status == "closed" or failed(live))
+  derive polling = marketOn and retries >= 2 and not socketUp
+  derive retryIn = max(0, backoffSecs(retries) - waited)
+  derive status = not page.onLine ? "Offline" : not marketOn ? "Idle" : socketUp ? "Live" : polling and history.ok ? "Live (polling)" : socketDown ? `Reconnecting in ${retryIn}s` : "Connecting"
   derive catError = match catAdded { case some(r) => r.error, case none => "" }
   derive locationCode = match failure(located) { case some(f) => f.code, case none => "" }
   derive locationMessage = locationCode == "" ? "" : locationCode == "PERMISSION_DENIED" ? "Location permission denied. Allow it in the system settings." : locationCode == "POSITION_UNAVAILABLE" ? "Location services are off. Turn them on and try again." : `Could not get the location: ${locationCode}`
@@ -141,6 +236,16 @@ component App
   derive accText = match here { case some(p) => `Accuracy ${round(p.coords.accuracy)} m`, case none => "" }
   task tick mount
     every(60000, tickNow)
+  // No built-in reconnect: wait out the backoff while the socket is down, then ask for a new one and
+  // for the history again (it fills the gap). Two failures in a row also poll the history every 2 s.
+  task retryTick when socketDown and not pending(live)
+    every(1000, tickRetry)
+  task goodOpen when socketUp and retries > 0
+    after(1, resetRetries)
+  task poll when polling and not pending(history)
+    every(2000, pollHistory)
+  task armCross when gMode == "press"
+    after(350, startCross)
   // The splash holds, fades (250 ms) and goes; reduced motion holds less.
   task hold when splash and not leaving and not still
     after(1250, leaveSplash)
@@ -153,6 +258,87 @@ component App
     after(1, restoreScheme)
   action tickNow
     now = performanceNow()
+  action tickRetry
+    let next = waited + 1
+    if next >= backoffSecs(retries)
+      waited = 0
+      retries = retries + 1
+      attempt = attempt + 1
+      histKey = histKey + 1
+    else
+      waited = next
+  action resetRetries
+    retries = 0
+    waited = 0
+  action pollHistory
+    histKey = histKey + 1
+  action chartSized(w: number, h: number)
+    chartW = round(w)
+    chartH = round(h)
+  // One pointer pans, or after a half-second hold moves the crosshair; two pinch.
+  action chartDown(e: PointerEvent)
+    if gA < 0
+      gA = e.pointerId
+      gAx = e.offsetX
+      gAy = e.offsetY
+      gStart = e.offsetX
+      gEnd0 = endT
+      gMode = "press"
+    else if gB < 0 and e.pointerId != gA
+      gB = e.pointerId
+      gBx = e.offsetX
+      gBy = e.offsetY
+      gMode = "pinch"
+      gDist0 = pinchDist(gAx, gAy, e.offsetX, e.offsetY)
+      gCount0 = count
+      gEnd0 = endT
+      crossOn = false
+  // Writes land when the action ends, so each step reads the values it computed (`let`), not the state.
+  action chartMove(e: PointerEvent)
+    let first = e.pointerId == gA
+    let ax = first ? e.offsetX : gAx
+    let ay = first ? e.offsetY : gAy
+    let second = e.pointerId == gB
+    let bx = second ? e.offsetX : gBx
+    let by = second ? e.offsetY : gBy
+    gAx = ax
+    gAy = ay
+    gBx = bx
+    gBy = by
+    let mode = gMode == "press" and first and max(e.offsetX - gStart, gStart - e.offsetX) > 8 ? "pan" : gMode
+    gMode = mode
+    if mode == "pinch"
+      let n = pinchCount(gCount0, gDist0, pinchDist(ax, ay, bx, by))
+      count = n
+      endT = clampEnd(zoomEnd(gEnd0, view.lastT, gCount0, n, ((ax + bx) / 2) / max(view.plotW, 1)), view.firstT, view.lastT, n)
+    else if mode == "pan" and first
+      endT = clampEnd(panEnd(gEnd0 > 0 ? gEnd0 : view.lastT, e.offsetX - gStart, view.slot), view.firstT, view.lastT, count)
+    else if mode == "cross" and first
+      crossX = e.offsetX
+      crossY = e.offsetY
+  action chartUp(e: PointerEvent)
+    if e.pointerId == gA or e.pointerId == gB
+      gA = -1
+      gB = -1
+      gMode = "none"
+      crossOn = false
+  action startCross
+    if gMode == "press"
+      gMode = "cross"
+      crossOn = true
+      crossX = gAx
+      crossY = gAy
+  action chartReset
+    count = 60
+    endT = 0
+  action zoomIn
+    endT = endT == 0 ? 0 : clampEnd(endT, view.firstT, view.lastT, clampCount(round(count * 0.8)))
+    count = clampCount(round(count * 0.8))
+  action zoomOut
+    endT = endT == 0 ? 0 : clampEnd(endT, view.firstT, view.lastT, clampCount(round(count * 1.25)))
+    count = clampCount(round(count * 1.25))
+  action goLatest
+    endT = 0
   action leaveSplash
     leaving = true
   action endSplash
@@ -479,6 +665,66 @@ component App
                               text c.name font="-exact-headline" color="text.primary" testId=`category-${c.id}`
                               text countText(c.count) font="-exact-footnote" color="text.secondary"
                                 testId=`count-${c.id}`
+                  else if e.name == "market"
+                    column flex=1 min-height=0 gap=8 padding="0px 16px 12px"
+                      row align-items="center" gap=12
+                        column flex=1 min-width=0
+                          text "BTC-USD" font="-exact-footnote" color="text.secondary"
+                          text (view.ready ? view.priceText : "--") font-size="2rem" font-weight=700 font-variant-numeric="tabular-nums"
+                            color="text.primary"
+                            testId="market-price"
+                          text (view.ready ? view.changeText : "") font="-exact-footnote" font-variant-numeric="tabular-nums"
+                            color=(view.changeUp ? "up" : "down")
+                            testId="market-change"
+                        row align-items="center" gap=6 padding="4px 10px" border-radius=12 flex-shrink=0 background-color="surface.card" testId="market-pill"
+                          view width=8 height=8 border-radius=4 background-color=statusToken(status)
+                          text status font="-exact-footnote" color="text.primary" testId="market-status"
+                      column flex=1 min-height=0 position="relative" overflow="hidden" border-radius=16 background-color="surface.card"
+                        resize=chartSized
+                        touch-action="none"
+                        pointerdown=chartDown
+                        pointermove=chartMove
+                        pointerup=chartUp
+                        dblclick=chartReset
+                        testId="market-chart"
+                        if view.ready
+                          svg position="absolute" left=0 top=0 width=chartW height=chartH viewBox=`0 0 ${chartW} ${chartH}` aria-hidden=true
+                            path d=view.grid fill="none" stroke="text.secondary" stroke-width=1 opacity=0.2
+                            path d=view.upVol fill="up" opacity=0.3
+                            path d=view.downVol fill="down" opacity=0.3
+                            path d=view.upWick fill="none" stroke="up" stroke-width=1
+                            path d=view.downWick fill="none" stroke="down" stroke-width=1
+                            path d=view.upBody fill="up"
+                            path d=view.downBody fill="down"
+                            line x1=0 y1=view.lastY x2=view.plotW y2=view.lastY stroke=(view.lastUp ? "up" : "down") stroke-width=1 stroke-dasharray="4 4"
+                            if view.crossOn
+                              line x1=view.crossX y1=0 x2=view.crossX y2=view.plotH stroke="text.secondary" stroke-width=1 stroke-dasharray="3 3"
+                              line x1=0 y1=view.crossY x2=view.plotW y2=view.crossY stroke="text.secondary" stroke-width=1 stroke-dasharray="3 3"
+                          for m in view.priceMarks key=m.text
+                            text m.text position="absolute" left=(view.plotW + 6) top=(m.pos - 7) font-size=11 color="text.secondary" font-variant-numeric="tabular-nums"
+                          for m in view.timeMarks key=`${m.pos}`
+                            text m.text position="absolute" left=(m.pos - 20) top=(view.plotH + 3) width=40 text-align="center" font-size=11 color="text.secondary"
+                          text view.lastText position="absolute" left=(view.plotW + 2) top=(view.lastY - 9) padding="1px 4px" border-radius=4 font-size=11 font-weight=600 font-variant-numeric="tabular-nums"
+                            color="ink.on-color"
+                            background-color=(view.lastUp ? "up" : "down")
+                            testId="market-last"
+                          if view.crossOn
+                            text view.crossPrice position="absolute" left=(view.plotW + 2) top=(view.crossY - 9) padding="1px 4px" border-radius=4 font-size=11 color="surface.card" background-color="text.secondary"
+                            column position="absolute" left=8 top=8 gap=2 padding=6 border-radius=8 background-color="surface.page" opacity=0.92 testId="market-readout"
+                              text view.readTime font-size=12 font-weight=600 color="text.primary"
+                              text view.readOhlc font-size=11 font-variant-numeric="tabular-nums" color="text.primary"
+                              text view.readVol font-size=11 font-variant-numeric="tabular-nums" color="text.secondary"
+                        else
+                          column flex=1 align-items="center" justify-content="center"
+                            text (pending(history) ? "Loading BTC-USD..." : "Waiting for data") color="text.secondary" testId="market-empty"
+                      row justify-content="center" align-items="center" gap=12
+                        button press=zoomOut aria-label="Zoom out" testId="zoom-out"
+                          text "−"
+                        button press=zoomIn aria-label="Zoom in" testId="zoom-in"
+                          text "+"
+                        button press=goLatest aria-label="Latest" testId="latest"
+                          text "Latest"
+                        text candlesText(count) font="-exact-footnote" color="text.secondary" testId="market-count"
                   else
                     list id=`content-${e.id}`
                       appearance="auto"
@@ -560,7 +806,7 @@ component App
             press=pick(t.name)
             testId=`tab-${t.name}`
             flex=1
-            image (t.name == "home" ? "symbol:home" : t.name == "tasks" ? "symbol:checkmark" : t.name == "categories" ? "symbol:list" : "symbol:settings")
+            image (t.name == "home" ? "symbol:home" : t.name == "tasks" ? "symbol:checkmark" : t.name == "categories" ? "symbol:list" : t.name == "market" ? "symbol:chart" : "symbol:settings")
             text tabTitle(t.name)
       if onboarding
         Onboarding(step=step, still=still, next=nextStep, back=prevStep, skip=skipOnboarding, go=goStep, swipeNext=swipeNext)

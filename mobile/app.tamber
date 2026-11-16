@@ -13,6 +13,9 @@ theme
   text.primary = light-dark(#1f1b16, #f5eee8)
   text.secondary = light-dark(#6b645a, #b3a89c)
   danger = light-dark(#c62828, #ff6b6b)
+  // Market candles: green up, red down; read on the card in light and dark.
+  up = light-dark(#16803c, #3ddc84)
+  down = light-dark(#d32f2f, #ff6b6b)
 
   hero.base = light-dark(#ffe3cf, #4a2618)
   hero.glow1 = light-dark(#ffb68a, #8a4526)

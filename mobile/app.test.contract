@@ -470,3 +470,73 @@ test "Remove photo restores the initial on Settings and Home"
   tap "tab-home"
   expect tree missing "home-avatar-photo"
   expect text "home-avatar-initial" == "A"
+
+test "the Market tab opens a chart whose zoom buttons stay within 20 to 200 candles"
+  fail fetch "https://api.exchange.coinbase.com"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-market"
+  clock settle
+  expect tree has "market-chart"
+  expect text "market-count" == "60 candles"
+  tap "zoom-in"
+  expect state count == 48
+  tap "zoom-out"
+  expect state count == 60
+  tap "zoom-in"
+  tap "zoom-in"
+  tap "zoom-in"
+  tap "zoom-in"
+  tap "zoom-in"
+  expect state count == 20
+  tap "zoom-in"
+  expect state count == 20
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  tap "zoom-out"
+  expect state count == 200
+  expect text "market-count" == "200 candles"
+
+test "double-tap resets the zoom and Latest follows the newest candle"
+  fail fetch "https://api.exchange.coinbase.com"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-market"
+  clock settle
+  tap "zoom-out"
+  expect state count == 75
+  tap "market-chart" dblclick
+  expect state count == 60
+  tap "latest"
+  expect state endT == 0
+
+test "without history the Market tab says so and the status is not Live"
+  fail fetch "https://api.exchange.coinbase.com"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-market"
+  clock settle
+  clock data
+  expect state history.ok == false
+  expect tree has "market-empty"
+  expect text "market-price" == "--"
+
+test "the socket is opened only while the Market tab shows"
+  fail fetch "https://api.exchange.coinbase.com"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  clock data
+  expect state live.status == "idle"
+  expect tree has "tab-home"

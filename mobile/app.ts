@@ -1,9 +1,11 @@
 import type { Answer, Database, Result, SQLValue, Sources, Storage } from './app.contract.d.ts';
+import { applyTick, buildView, mergeHistory, parseRows, parseTick, type Candle } from './chart.ts';
 
 const JSON_FILE = 'app:/data/todo.json'; // the previous store, imported once
 const DB_FILE = 'app:/data/todo.db';
 // app:/data holds todo.db (SQLite), the old todo.json(.bak) and the avatar; app:/tmp the pick (read from picked/) and its resize.
-export const grants = ['fs.read app:/data', 'fs.write app:/data', 'fs.read app:/tmp', 'fs.write app:/tmp', 'sqlite.open app:/data/todo.db', 'device.geolocation purpose.locationPurpose'].join('\n');
+export const grants = ['fs.read app:/data', 'fs.write app:/data', 'fs.read app:/tmp', 'fs.write app:/tmp', 'sqlite.open app:/data/todo.db', 'device.geolocation purpose.locationPurpose',
+  'net.fetch https://api.exchange.coinbase.com', 'net.websocket wss://ws-feed.exchange.coinbase.com'].join('\n');
 
 type Task = Result<'loadTasks'>[number];
 type Category = Result<'loadCategories'>[number];
@@ -82,7 +84,51 @@ const saveAvatar = async (from: string, old: string, seed: number, storage: Stor
   return { path: to, error: '' };
 };
 
+// Market (BTC-USD, Coinbase). The candles live here, in module state: the socket mapper folds each tick
+// into them, the history fetch merges, and chartView draws them. `version` counts changes, so a
+// resource that reads it (live.seq, history.seq) makes the view ask again.
+const REST = 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60';
+const WS = 'wss://ws-feed.exchange.coinbase.com';
+const SUBSCRIBE = JSON.stringify({ type: 'subscribe', product_ids: ['BTC-USD'], channels: ['ticker'] });
+export const market = { candles: [] as Candle[], baseOpen: 0, version: 0, status: 'closed', price: 0 };
+
+const marketHistory = async (on: boolean): Promise<Result<'marketHistory'>> => {
+  if (!on) return { ok: false, error: '', seq: market.version };
+  try {
+    const res = await fetch(REST);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const fresh = parseRows(await res.json());
+    if (!fresh.length) throw new Error('no candles');
+    if (!market.baseOpen) market.baseOpen = fresh[0].o;
+    market.candles = mergeHistory(market.candles, fresh);
+    market.version++;
+    return { ok: true, error: '', seq: market.version };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e), seq: market.version };
+  }
+};
+
+// A stream the host keeps open: one mapper call per frame, returning the snapshot synchronously.
+const marketFeed = () => {
+  market.status = 'connecting';
+  return fetch(WS, {
+    exactIdleTimeout: 8000, // BTC-USD ticks many times a second: silence means a dead socket
+    exactStream(event: { type: string; data?: unknown }, socket?: { send(text: string): void }) {
+      if (event.type === 'open') { market.status = 'connecting'; socket?.send(SUBSCRIBE); }
+      else if (event.type === 'message') {
+        const tick = typeof event.data === 'string' ? parseTick(event.data) : null;
+        if (tick) { market.candles = applyTick(market.candles, tick); market.price = tick.price; market.status = 'live'; market.version++; }
+      } else market.status = 'closed'; // close, or error (refused, timeout)
+      return { status: market.status, seq: market.version, price: market.price };
+    },
+  } as RequestInit);
+};
+
 const sources: Sources = {
+  marketHistory: ([, on]) => marketHistory(on),
+  marketFeed: () => marketFeed() as unknown as Result<'marketFeed'>,
+  chartView: ([w, h, count, endT, crossOn, crossX, crossY, , utcOffset]) =>
+    buildView(market.candles, { w, h, count, endT, crossOn, crossX, crossY, baseOpen: market.baseOpen, utcOffset }),
   saveAvatar: ([from, old, seed], _store, storage) => saveAvatar(from, old, seed, storage),
   loadCategories: (_args, _store, storage) => read(storage, SEED, async (db) =>
     (await db.query('SELECT id, name, color FROM categories ORDER BY id')).rows.map(([id, name, color]) => ({ id: String(id), name: String(name), color: String(color) }))),
