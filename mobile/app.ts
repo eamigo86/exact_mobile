@@ -1,7 +1,8 @@
 import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
 
 const FILE = 'app:/data/todo.json';
-export const grants = [`fs.read ${FILE}`, `fs.write ${FILE}`, 'device.geolocation purpose.locationPurpose'].join('\n');
+// app:/data holds todo.json and the avatar; app:/tmp the pick (read from picked/) and its resize.
+export const grants = ['fs.read app:/data', 'fs.write app:/data', 'fs.read app:/tmp', 'fs.write app:/tmp', 'device.geolocation purpose.locationPurpose'].join('\n');
 
 type Task = Result<'loadTasks'>[number];
 type Category = Result<'loadCategories'>[number];
@@ -25,7 +26,31 @@ const save = async (storage: Storage, data: Data): Promise<Result<'saveTask'>> =
 };
 const nextId = (rows: { id: string }[]) => String(Math.max(0, ...rows.map((r) => Number(r.id))) + 1);
 
+// Avatar: centre square of the pick, 256 px, JPEG, under a fresh name (a reused name can show
+// stale). A first pass bounds a big photo and tells its size; "" as `from` only removes.
+const rmQuiet = (storage: Storage, path: string) => (path ? storage.fs.rm(path).catch(() => {}) : Promise.resolve());
+const saveAvatar = async (from: string, old: string, seed: number, storage: Storage): Promise<Result<'saveAvatar'>> => {
+  if (from === '') { await rmQuiet(storage, old); return { path: '', error: '' }; }
+  const tmp = 'app:/tmp/avatar-probe.jpg';
+  const to = `app:/data/avatar-${seed}.jpg`;
+  try {
+    const { width, height } = await storage.fs.compressImage(from, tmp, { maxDimension: 1024, maxBytes: 4_000_000 });
+    const side = Math.min(width, height);
+    await storage.fs.transformImage(tmp, to, {
+      crop: { x: Math.floor((width - side) / 2), y: Math.floor((height - side) / 2), width: side, height: side },
+      resizeWidth: 256, resizeHeight: 256, type: 'image/jpeg', metadata: 'none',
+    });
+  } catch {
+    return { path: old, error: 'Could not use that photo. Try another one.' };
+  } finally {
+    await rmQuiet(storage, tmp);
+  }
+  if (old !== to) await rmQuiet(storage, old);
+  return { path: to, error: '' };
+};
+
 const sources: Sources = {
+  saveAvatar: ([from, old, seed], _store, storage) => saveAvatar(from, old, seed, storage),
   loadCategories: async (_args, _store, storage) => (await load(storage)).categories,
   loadTasks: async (_args, _store, storage) => (await load(storage)).tasks,
   saveTask: async ([id, title, notes, categoryId, due, time], _store, storage) => {

@@ -222,7 +222,7 @@ test "the settings name greets on Home, and Home counts"
   tap "done-2"
   clock data
   tap "tab-home"
-  expect text "greeting" == "Good afternoon, Ada"
+  expect text "greeting" == "Hello, Ada"
   expect text "progress-text" == "1 of 1 done today"
   expect text "count-all" == "2"
   expect text "count-today" == "1"
@@ -361,3 +361,82 @@ test "swiping left and right changes the step"
   tap "onb-content" drag 140 0 mouse
   clock settle
   expect state step == 0
+
+// Profile photo. The picker answers with fixtures/avatar.jpg (a 300x200 gradient).
+test "the greeting is Hello, with the name when there is one"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  expect text "greeting" == "Hello"
+  tap "tab-settings"
+  type "settings-name" "Ada"
+  tap "tab-home"
+  expect text "greeting" == "Hello, Ada"
+
+test "a picked photo shows in Settings and on Home, and survives a reload"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-settings"
+  expect tree missing "avatar-photo"
+  tap "avatar"
+  pick "avatar-file" "fixtures/avatar.jpg"
+  clock data
+  clock settle
+  expect tree has "avatar-photo"
+  expect tree has "photo-remove"
+  tap "tab-home"
+  expect tree has "home-avatar-photo"
+  reload
+  clock +1600
+  clock data
+  expect tree has "home-avatar-photo"
+  tap "tab-settings"
+  expect tree has "avatar-photo"
+
+test "Choose photo opens the same picker, and Cancel keeps the photo"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-settings"
+  tap "photo-choose"
+  pick "avatar-file" "fixtures/avatar.jpg"
+  clock data
+  clock settle
+  expect tree has "avatar-photo"
+  tap "photo-choose"
+  pick "avatar-file" cancel
+  clock settle
+  expect tree has "avatar-photo"
+  expect tree missing "photo-error"
+
+test "cancelling the first picker leaves the fallback"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-settings"
+  tap "avatar"
+  pick "avatar-file" cancel
+  clock settle
+  expect tree missing "avatar-photo"
+  expect tree missing "photo-remove"
+
+test "Remove photo restores the initial on Settings and Home"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-settings"
+  type "settings-name" "Ada"
+  tap "avatar"
+  pick "avatar-file" "fixtures/avatar.jpg"
+  clock data
+  clock settle
+  tap "photo-remove"
+  clock data
+  clock settle
+  expect tree missing "avatar-photo"
+  expect tree missing "photo-remove"
+  expect text "avatar-initial" == "A"
+  tap "tab-home"
+  expect tree missing "home-avatar-photo"
+  expect text "home-avatar-initial" == "A"

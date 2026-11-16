@@ -38,6 +38,10 @@ shape Reply
   ok: bool
   error: string
 
+shape AvatarReply
+  path: string
+  error: string
+
 shape Time
   epochAtZero: number
   utcOffset: number
@@ -52,8 +56,6 @@ fn metaText(t: Task, cats: Category[]): string = [categoryName(cats, t.categoryI
 fn countText(n: number): string = `${n} ${n == 1 ? "task" : "tasks"}`
 fn dueKey(t: Task): string = t.due == "" ? "9999-99-99" : t.due
 fn catToken(cats: Category[], id: string): string = match first(cats.filter(c => c.id == id)) { case some(c) => `cat.${c.color}`, case none => "text.secondary" }
-fn hourOf(ms: number, offset: number): number = floor((((ms / 60000 + offset) % 1440) + 1440) % 1440 / 60)
-fn salutation(hour: number): string = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
 fn chipLabel(k: string): string = k == "all" ? "All" : k == "active" ? "Active" : k == "done" ? "Done" : k == "today" ? "Today" : "Overdue"
 fn colorLabel(k: string): string = k == "blue" ? "Blue" : k == "violet" ? "Violet" : k == "pink" ? "Pink" : k == "orange" ? "Orange" : k == "green" ? "Green" : "Teal"
 fn initial(name: string): string = name.trim() == "" ? "" : name.trim().slice(0, 1).toUpperCase()
@@ -93,6 +95,8 @@ fn schemeLabel(k: string): string = k == "system" ? "System" : k == "light" ? "L
 
 component App
   state name = "" persist
+  state avatar = "" persist
+  state photoError = ""
   state filter = "all"
   state catFilter = ""
   state now = 0
@@ -113,6 +117,7 @@ component App
   mutation toggled as shape Reply queue refreshes tasks
   mutation removed as shape Reply queue refreshes tasks
   mutation catAdded as shape Reply queue refreshes categories then afterCat
+  mutation avatarSaved as shape AvatarReply queue then afterAvatar
   mutation located as shape GeolocationPosition
   derive today = formatDate(time.epochAtZero + now, time.utcOffset, "iso")
   derive shown = tasks.filter(t => passes(t, filter, catFilter, today))
@@ -121,8 +126,8 @@ component App
   derive overdueCount = tasks.filter(t => isOverdue(t, today)).length
   derive upNext = sortBy(sortBy(tasks.filter(t => not t.done), t => t.time), t => dueKey(t)).slice(0, 5)
   derive catRows = categories.map(c => CatRow(id=c.id, name=c.name, color=c.color, count=tasks.filter(x => x.categoryId == c.id).length))
-  derive hour = hourOf(time.epochAtZero + now, time.utcOffset)
-  derive greeting = name.trim() == "" ? "Hello" : `${salutation(hour)}, ${name.trim()}`
+  derive greeting = name.trim() == "" ? "Hello" : `Hello, ${name.trim()}`
+  derive avatarReply = match avatarSaved { case some(r) => r, case none => AvatarReply(path=avatar, error="") }
   derive todayFraction = todayTasks.length == 0 ? 0 : todayDone / todayTasks.length
   derive still = media.prefersReducedMotion
   derive onboarding = (not onboarded or replay) and (leaving or not splash)
@@ -192,6 +197,22 @@ component App
     catFilter = v
   action setName(v: string)
     name = v
+  action choosePhoto
+    showPicker("avatar-file")
+  // The source crops, resizes and stores the pick under a fresh name; the old file goes with it.
+  action photoPicked(files: Picked[])
+    match files.at(0)
+      case some(f)
+        send avatarSaved = saveAvatar(f.path, avatar, round(time.epochAtZero + performanceNow()))
+      case none
+        photoError = ""
+  action removePhoto
+    send avatarSaved = saveAvatar("", avatar, 0)
+  // A failure keeps the current photo and says so; success stores the new path (or "").
+  action afterAvatar
+    photoError = avatarReply.error
+    if avatarReply.error == ""
+      avatar = avatarReply.path
   action showLocation
     send located = getCurrentPosition(enableHighAccuracy=true, maximumAge=0)
   action openAddTask
@@ -333,7 +354,17 @@ component App
                           background-color="hero.base"
                           background-image="radial-gradient(circle at 15% 10%, hero.glow1, transparent 60%), radial-gradient(circle at 90% 20%, hero.glow2, transparent 55%), radial-gradient(circle at 60% 100%, hero.glow3, transparent 60%)"
                           testId="hero"
-                          text greeting font="-exact-title2" font-weight=600 color="ink.on-hero" testId="greeting"
+                          row gap=12 align-items="center"
+                            column width="2.75rem" height="2.75rem" flex-shrink=0 border-radius="1.375rem" overflow="hidden" align-items="center" justify-content="center"
+                              background-color="surface.card"
+                              testId="home-avatar"
+                              if avatar != ""
+                                image avatar width="2.75rem" height="2.75rem" object-fit="cover" aria-hidden=true testId="home-avatar-photo"
+                              else if initial(name) == ""
+                                image "symbol:person" color="text.primary" aria-hidden=true
+                              else
+                                text initial(name) font="-exact-headline" color="text.primary" testId="home-avatar-initial"
+                            text greeting font="-exact-title2" font-weight=600 color="ink.on-hero" flex=1 min-width=0 testId="greeting"
                           row flex-wrap="wrap" background-color="surface.card" border-radius=24 padding=16 gap=16 align-items="center"
                             column width=120 flex-shrink=0
                               RingProgress(label="Done", value=`${round(todayFraction * 100)}%`, fraction=todayFraction, tint=none)
@@ -456,15 +487,27 @@ component App
                       min-height=0
                       section
                         row gap=16 align-items="center"
-                          column width="4rem" height="4rem" border-radius="2rem" align-items="center" justify-content="center"
-                            background-image="linear-gradient(150deg, hero.glow1, hero.glow2)"
-                            testId="avatar"
-                            if initial(name) == ""
-                              image "symbol:person" color="ink.on-hero" aria-hidden=true
-                            else
-                              text initial(name) font="-exact-title1" color="ink.on-hero"
+                          button press=choosePhoto aria-label="Change profile photo" testId="avatar" flex-shrink=0
+                            column width="4rem" height="4rem" border-radius="2rem" overflow="hidden" align-items="center" justify-content="center"
+                              background-image="linear-gradient(150deg, hero.glow1, hero.glow2)"
+                              if avatar != ""
+                                image avatar width="4rem" height="4rem" object-fit="cover" aria-hidden=true testId="avatar-photo"
+                              else if initial(name) == ""
+                                image "symbol:person" color="ink.on-hero" aria-hidden=true
+                              else
+                                text initial(name) font="-exact-title1" color="ink.on-hero" testId="avatar-initial"
                           column flex=1 min-width=0
                             text (name.trim() == "" ? "Your name" : name.trim()) font="-exact-headline"
+                        row gap=16
+                          button press=choosePhoto testId="photo-choose"
+                            text "Choose photo"
+                          if avatar != ""
+                            button press=removePhoto disabled=pending(avatarSaved) testId="photo-remove"
+                              text "Remove photo" color="danger"
+                          input type="file" id="avatar-file" accept="image/*" change=photoPicked aria-hidden=true tabindex=-1
+                            width=1 height=1 opacity=0 position="absolute"
+                        if photoError != ""
+                          text photoError font="-exact-footnote" color="danger" testId="photo-error"
                         row
                           input value=name
                             input=setName
