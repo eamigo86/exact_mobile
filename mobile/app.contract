@@ -486,18 +486,21 @@ component App
                       flex=1
                       min-height=0
                       section
-                        row gap=16 align-items="center"
-                          button press=choosePhoto aria-label="Change profile photo" testId="avatar" flex-shrink=0
-                            column width="4rem" height="4rem" border-radius="2rem" overflow="hidden" align-items="center" justify-content="center"
-                              background-image="linear-gradient(150deg, hero.glow1, hero.glow2)"
-                              if avatar != ""
-                                image avatar width="4rem" height="4rem" object-fit="cover" aria-hidden=true testId="avatar-photo"
-                              else if initial(name) == ""
-                                image "symbol:person" color="ink.on-hero" aria-hidden=true
-                              else
-                                text initial(name) font="-exact-title1" color="ink.on-hero" testId="avatar-initial"
-                          column flex=1 min-width=0
-                            text (name.trim() == "" ? "Your name" : name.trim()) font="-exact-headline"
+                        // Keyed by the photo: a list row on iOS keeps its first picture until the row mounts again.
+                        for a in [avatar] key=a
+                          row gap=16 align-items="center"
+                            // A native button draws only text and symbols on iOS, so the photo sits in a pressable box.
+                            column role="button" press=choosePhoto aria-label="Change profile photo" testId="avatar" flex-shrink=0
+                              column width="4rem" height="4rem" border-radius="2rem" overflow="hidden" align-items="center" justify-content="center"
+                                background-image="linear-gradient(150deg, hero.glow1, hero.glow2)"
+                                if avatar != ""
+                                  image avatar width="4rem" height="4rem" object-fit="cover" aria-hidden=true testId="avatar-photo"
+                                else if initial(name) == ""
+                                  image "symbol:person" color="ink.on-hero" aria-hidden=true
+                                else
+                                  text initial(name) font="-exact-title1" color="ink.on-hero" testId="avatar-initial"
+                            column flex=1 min-width=0
+                              text (name.trim() == "" ? "Your name" : name.trim()) font="-exact-headline"
                         row gap=16
                           button press=choosePhoto testId="photo-choose"
                             text "Choose photo"
