@@ -588,29 +588,29 @@ component App
                           if not covered and nav.tab == "home"
                             list appearance="none"
                               for x in upNext key=x.id
-                                // Swipe right pushes the row to show Complete (with a gap after it); swipe left slides Edit
-                                // then Delete in over the row, which stays put (a full swipe presses the outermost).
+                                // Swipe right pushes the row to show Complete (with a gap after it); swipe left pushes it to
+                                // show Edit then Delete (a full swipe presses the outermost). Actions have 12 pt rounded corners.
                                 scroll swipeContent=`row-${x.id}` swipeLeading=`complete-${x.id}` swipeTrailing=`edit-${x.id} delete-${x.id}`
                                   display="flex" width="100%" padding-right=0 overflow-x="scroll" overflow-y="hidden" scrollbar-width="none"
                                   scroll-snap-type="x mandatory" scrollLeft=88 testId=`upnext-${x.id}`
                                   row width=88 flex-shrink=0 scroll-snap-align="start"
                                     button id=`complete-${x.id}` press=toggle(x.id, true) appearance="none" aria-label="Complete" display="flex"
-                                      width=76 flex-shrink=0 background-color="swipe.complete"
+                                      width=76 flex-shrink=0 border-radius=12 background-color="swipe.complete"
                                       align-items="center" justify-content="center" testId=`upnext-${x.id}-complete`
                                       image "symbol:checkmark" color="swipe.glyph" aria-hidden=true width=24 height=24
                                   row id=`row-${x.id}` gap=12 align-items="center" min-height=44 width="100%" flex-shrink=0
-                                    position="sticky" left=0 scroll-snap-align="start" box-sizing="border-box" background-color="surface.card"
+                                    scroll-snap-align="start" box-sizing="border-box" background-color="surface.card"
                                     view width=10 height=10 border-radius=5 background-color=catToken(categories, x.categoryId)
                                     column flex=1 min-width=0
                                       text x.title color="text.primary"
                                       if dueText(x) != ""
                                         text dueText(x) font="-exact-footnote" color=(isOverdue(x, today) ? "-exact-system-red" : "text.secondary")
                                   button id=`edit-${x.id}` press=openEditTask(x.id) appearance="none" aria-label="Edit" display="flex"
-                                    position="relative" z-index=1 width=76 flex-shrink=0 scroll-snap-align="start" background-color="swipe.edit"
+                                    width=76 flex-shrink=0 scroll-snap-align="start" border-radius=12 background-color="swipe.edit"
                                     align-items="center" justify-content="center" testId=`upnext-${x.id}-edit`
                                     image "symbol:compose" color="swipe.glyph" aria-hidden=true width=24 height=24
                                   button id=`delete-${x.id}` press=remove(x.id) appearance="none" aria-label="Delete" display="flex"
-                                    position="relative" z-index=1 width=76 flex-shrink=0 scroll-snap-align="start" background-color="swipe.delete"
+                                    width=76 flex-shrink=0 margin-left=8 scroll-snap-align="start" border-radius=12 background-color="swipe.delete"
                                     align-items="center" justify-content="center" testId=`upnext-${x.id}-delete`
                                     image "symbol:delete" color="swipe.glyph" aria-hidden=true width=24 height=24
                           if upNext.length == 0
