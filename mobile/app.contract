@@ -582,9 +582,10 @@ component App
                               text "Overdue" font="-exact-footnote" color="ink.on-hero"
                         column margin="0px 16px" padding=16 gap=4 border-radius=24 background-color="surface.card" testId="upnext"
                           text "Up next" role="heading" aria-level=2 color="text.primary" font="-exact-title3"
-                          // Built once the splash is gone: Android drops (and blanks Home for) a scrollLeft given to a row
-                          // that is built while the route is covered.
-                          if not covered
+                          // Built only while Home shows: Android's painted host records, but never applies, the scrollLeft
+                          // of a row built while its route is hidden (the splash, or another tab where a task is added), so
+                          // such a row rested open on Complete; built here it rests closed. The splash case also blanked Home.
+                          if not covered and nav.tab == "home"
                             list appearance="none"
                               for x in upNext key=x.id
                                 // Swipe right pushes the row to show Complete (with a gap after it); swipe left slides Edit
