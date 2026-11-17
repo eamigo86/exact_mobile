@@ -61,7 +61,7 @@ Out of scope: swipe actions on the Tasks or Categories screens, undo, web and de
 
 - [x] T1 Branch and this document. Route: inline (mechanical).
 - [x] T2 Swipe actions on Home's "Up next" rows, tests first. Route: delegated writer (contract, theme, tests).
-- [ ] T3 Verify on the iOS Simulator and the Android emulator (light and dark), then measure. Route: inline per-action.
+- [x] T3 Verify on the iOS Simulator and the Android emulator (light and dark), then measure. Route: inline per-action.
 
 ## Delivery
 
@@ -159,3 +159,57 @@ both sides (iOS), left open, two open, and open-on-Complete (Android).
 - Android: scrollLeft on rows built while covered is dropped and can blank the screen; one-row-open and full swipe are
   iOS only. iOS: a partial reverse drag from fully open can rest part-way (Edit peeking) until touched again.
 - Authored lines of the correction (`git diff --numstat 0f8c286..8431fc0 -- mobile`): contract +30/-25, test +1/-1.
+
+## Spec change (2026-11-17, user, after the first device check)
+
+- Swipe left: the row content stays in place. Edit and Delete slide in from the right edge OVER the text until fully shown.
+  Done with `position="sticky" left=0` on the content and `position="relative" z-index=1` on the actions, with no
+  workaround.
+- Swipe right: the row still moves right. A gap of about 12 pt, in the card colour, separates the open Complete action from the dot.
+
+## T3 device verification (2026-11-17)
+
+iPhone 17 Pro Simulator (iOS 26.5, `make ios`) and Pixel 9 Pro XL emulator (API 35, `./exact.mjs android`).
+
+- First build (0f8c286):
+  - Android rested open on Complete.
+  - iOS let two rows be open at once.
+  - Tapping the content did not close the row.
+  - A full swipe never fired.
+  - iOS drew separators across the rows.
+  - Root cause of most of these: the comma-separated `swipeTrailing` names (see the correction section).
+- Final build (8431fc0):
+  - iOS: no separators; the left overlay keeps the text in place; the right swipe shows Complete with the 12 pt gap.
+  - Android: the left overlay and the right gap are correct, and the row rests closed after a cold start.
+- Still open on Android: a row ADDED while the app is running rests open on Complete, until the next cold start.
+  - Checked by creating a task and returning to Home.
+  - It is the same dropped-`scrollLeft` quirk of the Android painted host, and the `if not covered` workaround only covers cold start.
+  - A fix needs either an Exact host change or a larger app workaround, so it waits for the user's decision.
+- Exact limitations confirmed on Android: no one-row-open and no full swipe (iOS only). On iOS, tapping an open row's
+  content does not close it.
+- Test data restored: iOS has the sprint demo active, Android has no tasks.
+
+### Measurement (Android emulator, Pixel 9 Pro XL API 35, 60 Hz)
+
+Method: 10 cycles per run of a 300 ms swipe-left that opens Edit/Delete, then a 300 ms reverse swipe that closes it
+(`adb shell input swipe`). Frame present times come from `dumpsys SurfaceFlinger --latency` on the app's layer, cleared
+before each gesture and read 1 s after it. App CPU comes from `/proc/<pid>/stat` over the whole loop, settle time
+included. Two runs per build. Emulator numbers compare the two apps; they are not device numbers.
+
+| Build | Frames / gesture (median) | Interval p50 | p90 | p99 | Janky (>25 ms) | App CPU (one core) |
+|---|---|---|---|---|---|---|
+| NSH, first build (row pushed left) | 34-35 | 24 ms | 74-80 ms | 123-144 ms | 48-49% | 29-32% |
+| Exact, first build (row pushed left) | 8-11 | 30-41 ms | ~101 ms | 164-179 ms | 56-66% | 8.5-8.8% |
+| NSH, final (actions overlay the row) | 26.5 | 24 ms | 87-100 ms | 380-422 ms | 48% | 23-26% |
+| Exact, final (actions overlay the row) | 8-11 | 32-33 ms | 90-104 ms | 126-144 ms | 56-60% | 8.4-12.1% |
+
+Reading:
+- NSH follows the finger with about 3x more frames: its native pan drives an animated value on the UI thread. It costs
+  2-3x more app CPU.
+- Exact presents few frames per gesture and uses little CPU.
+- NSH's final build shows rare long stalls (p99 about 0.4 s) that the first build did not have. The cause is not
+  investigated.
+
+Authored lines, final (code + tests, docs excluded):
+- Exact (`db7da0b..HEAD`): contract +32/-7, theme +6, tests +93. Code 38 lines.
+- NSH (`6922eb1..HEAD`): swipe row 107, snap maths 20, Home +16/-4, theme 8, icons +4/-1, tests 107. Code 155 lines.
