@@ -234,3 +234,18 @@ Authored lines, final (code + tests, docs excluded):
   400 px swipe right after returning to Home did not engage; the next one did. Not reproduced.
 - Exact finding: in the Android painted host, a hidden route consumes an authored `scrollLeft` without applying it. It
   is worth an upstream report.
+
+## Spec change 2 (2026-11-17, user): standard push and rounded actions
+
+- The left-swipe overlay is reverted to the standard behaviour: the whole row moves left to reveal Edit and Delete.
+  Removed `position="sticky" left=0` from the content and `position="relative" z-index=1` from Edit and Delete.
+  Kept: the 12 pt right-swipe gap, the `if not covered and nav.tab == "home"` Android workaround, the space-separated
+  names, `list appearance="none"` and the colours.
+- Rounded actions: `border-radius=12` on Complete, Edit and Delete. The app has no radius token; inputs and buttons are
+  native controls, and the nearest authored small radii are 12 (market pill) and 16 (chips), so 12 was chosen.
+  Edit and Delete are separated by `margin-left=8` on Delete. Actions keep full row height, 76 pt wide, icon only.
+- No width or `scrollLeft` change: the leading wrapper is still 88 (76 + 12 gap), so `scrollLeft=88` still lands closed.
+  The trailing side grows from 152 to 160 pt; the scroll extent follows the content, so the open state shows both
+  actions fully. Not measured here (the test host reads no geometry); to confirm on devices.
+- Evidence: make check clean; make test 35 passed; test-storage 7; test-location 4; test-config 3; `./exact.mjs ios`
+  builds. No RED possible (geometry is not testable in the host). Android not run.
