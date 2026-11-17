@@ -312,7 +312,7 @@ test "scrolling an Up next row sideways reveals Complete on the right and Edit a
   clock data
   clock settle
   tap "tab-home"
-  tap "upnext-1" wheel -76 0
+  tap "upnext-1" wheel -88 0
   clock settle
   tap "upnext-1-complete"
   clock data
