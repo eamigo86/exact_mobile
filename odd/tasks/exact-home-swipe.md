@@ -114,3 +114,48 @@ Out of scope: swipe actions on the Tasks or Categories screens, undo, web and de
   needed, so they draw on Android too).
 - Authored lines (`git diff --numstat db7da0b..0f8c286 -- mobile`): contract +27/-7, theme +6, tests +93 (126 added,
   7 removed overall). Four tests, about 17-35 lines each, dominated by the add-task setup steps.
+
+## T2 correction (device findings)
+
+Commit 8431fc0 `fix(home): make the up next swipe rows engage on ios and android`. Route: delegated writer.
+
+### Root cause
+- The iOS Simulator log said `exact: swipeContent on #75 is refused: "edit-2,delete-2" names no one descendant of it`.
+  `swipeLeading`/`swipeTrailing` names are whitespace-separated; the feature used a comma. iOS refused the row and
+  swiped it as a plain scroll: no one-row-open, no full swipe. The plain `list` was NOT the cause. Neither the web test
+  host nor `contract build` warns about it.
+- Fix: `swipeTrailing=\`edit-${x.id} delete-${x.id}\``.
+
+### Per-item outcomes
+1. Android rests open: fixed. Proven A/B on the emulator: any `scrollLeft` on these rows built while the splash covers
+   Home is dropped, and on cold start Home's body renders blank until a tab switch (reproduced on 0f8c286, and with
+   `scrollLeft=(covered ? 0 : 88)` and with a `scroll=` handler; pre-feature db7da0b cold-starts fine; no `scrollLeft`
+   renders but rests open). Building the list under `if not covered` fixes both: cold start renders, rows rest closed.
+   Kept as an app-level workaround (3 lines incl. comment); the quirk lives in `host/painted/src/presenter/collection.rs`
+   (scroll binding applied once, skipped while the route is covered).
+2. iOS two rows open: fixed (names fix). Row 2 opening closes row 1 (screenshot pair). Android: framework limitation,
+   both rows stay open (the one-row behaviour is iOS only, `PaintedSwipesIOS.swift`).
+3. iOS tap on open content does not close: framework limitation, not fixed. `PaintedSwipes` closes rows only on another
+   row's drag; there is no tap handling. A tap on content is not wired to the scroll. Workaround would need a state-bound
+   `scrollLeft` and a pressable content (changes semantics); not done.
+4. Full swipe: fixed on iOS (full right swipe pressed Complete; Home showed "Nothing to do", data restored). Android:
+   framework limitation, a full swipe only snaps open (Android scroll clamps at 0; the full swipe is iOS only).
+5. iOS separators: fixed with `list appearance="none"` (own rows, no UIKit separators). Screenshots show none.
+
+### New requirements
+- A. Left swipe overlay: done with `position="sticky" left=0` on the row content and `position="relative" z-index=1` on
+  Edit/Delete. iOS and Android screenshots: content stays, actions slide over it. No custom gesture code.
+- B. Right swipe gap: the Complete button sits in an 88-wide wrapper (76 button + 12 transparent), `scrollLeft=88`.
+  Open on Complete: a 12 pt gap of card background between green and dot, iOS and Android. Closed row unchanged.
+- Test host cannot read geometry or scroll offsets; tests unchanged except `wheel -88` for the wider leading side.
+
+### Verification
+make check clean; make test 35 passed; test-storage 7 pass; test-location 4 pass; test-config 3 pass. No RED was
+possible for the root cause (web host ignores swipe names). Device screenshots taken at rest, half-open and open on
+both sides (iOS), left open, two open, and open-on-Complete (Android).
+
+### Findings added
+- `contract vocab swipe` does not say the names are space-separated; a comma silently refuses the row on iOS only.
+- Android: scrollLeft on rows built while covered is dropped and can blank the screen; one-row-open and full swipe are
+  iOS only. iOS: a partial reverse drag from fully open can rest part-way (Edit peeking) until touched again.
+- Authored lines of the correction (`git diff --numstat 0f8c286..8431fc0 -- mobile`): contract +30/-25, test +1/-1.
