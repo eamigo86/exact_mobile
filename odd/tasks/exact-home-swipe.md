@@ -213,3 +213,24 @@ Reading:
 Authored lines, final (code + tests, docs excluded):
 - Exact (`db7da0b..HEAD`): contract +32/-7, theme +6, tests +93. Code 38 lines.
 - NSH (`6922eb1..HEAD`): swipe row 107, snap maths 20, Home +16/-4, theme 8, icons +4/-1, tests 107. Code 155 lines.
+
+## T3 follow-up: Android rows added at runtime (2026-11-17)
+
+- Symptom: a task added from the Tasks tab came back to Home with its row resting open on Complete. Cold start was
+  already fine.
+- First hypothesis, from `host/painted/src/presenter/collection.rs:470-481`: authored scroll is applied only when the
+  plan binds a scroll prop. Turning `scrollLeft=88` into an expression did NOT fix it (device check), so it was reverted.
+- Actual cause (`collection.rs:578-589`): when a row's route is hidden (`route_visibility(view).0`), the host records the
+  requested `scrollLeft` as consumed but does not apply it. When the route shows again the request is unchanged, so it
+  is never applied. A row built while Home is hidden (the splash, or the Tasks tab where the task is added) rests at 0,
+  which is open on Complete.
+- Fix (commit after d2ff5e3): build the list under `if not covered and nav.tab == "home"`, a one-line condition with the
+  same pattern as the splash case. `make check` clean; `make test` 35 passed, 0 failed.
+- Device check:
+  - Android: a cold start rests closed with no blank screen. A task added from Tasks rests closed back on Home. Left
+    overlay and right gap still work.
+  - iOS: after Tasks -> Home the row rests closed and swipes open.
+- Side effects: open rows close when you leave Home, because the rows are rebuilt on each return. Once, on Android, a
+  400 px swipe right after returning to Home did not engage; the next one did. Not reproduced.
+- Exact finding: in the Android painted host, a hidden route consumes an authored `scrollLeft` without applying it. It
+  is worth an upstream report.
