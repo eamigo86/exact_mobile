@@ -249,3 +249,11 @@ Authored lines, final (code + tests, docs excluded):
   actions fully. Not measured here (the test host reads no geometry); to confirm on devices.
 - Evidence: make check clean; make test 35 passed; test-storage 7; test-location 4; test-config 3; `./exact.mjs ios`
   builds. No RED possible (geometry is not testable in the host). Android not run.
+
+### Device verification of spec change 2 (2026-11-17)
+
+- Build 0f7ef93, iOS 26.5 Simulator and Android API 35 emulator:
+  - A left swipe pushes the whole row to show rounded Edit and Delete (12 pt radius) with 8 pt between them.
+  - A right swipe shows a rounded Complete with the 12 pt gap.
+  - Android: a task added from the Tasks tab still rests closed on Home.
+- Test data afterwards: iOS unchanged (3 tasks), Android has none.
