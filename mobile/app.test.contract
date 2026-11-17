@@ -230,6 +230,99 @@ test "the settings name greets on Home, and Home counts"
   expect tree has "upnext-1"
   expect tree missing "upnext-2"
 
+// Home's Up next rows: swipe actions. Their buttons carry the row's testId and the action's name.
+test "Home's Up next row completes a task through its swipe action"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Call Ann"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "tab-home"
+  tap "upnext-1-complete"
+  clock data
+  expect state tasks.0 .done == true
+  expect tree missing "upnext-1"
+
+test "Home's Up next row opens the editor for its task through its swipe action"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Call Ann"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "add-task"
+  clock settle
+  type "form-title" "Buy milk"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "tab-home"
+  tap "upnext-2" wheel 152 0
+  clock settle
+  tap "upnext-2-edit"
+  clock settle
+  expect text "form-title" == "Buy milk"
+  type "form-title" "Buy oat milk"
+  tap "form-save"
+  clock data
+  clock settle
+  expect state tasks.1 .title == "Buy oat milk"
+
+test "Home's Up next row deletes a task through its swipe action, without asking"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Call Ann"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "tab-home"
+  tap "upnext-1-delete"
+  clock data
+  expect state tasks == []
+  expect tree missing "upnext-1"
+
+test "scrolling an Up next row sideways reveals Complete on the right and Edit and Delete on the left"
+  clock +1600
+  tap "onb-skip"
+  clock settle
+  tap "tab-tasks"
+  tap "add-task"
+  clock settle
+  type "form-title" "Call Ann"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "add-task"
+  clock settle
+  type "form-title" "Buy milk"
+  tap "form-save"
+  clock data
+  clock settle
+  tap "tab-home"
+  tap "upnext-1" wheel -76 0
+  clock settle
+  tap "upnext-1-complete"
+  clock data
+  expect state tasks.0 .done == true
+  tap "upnext-2" wheel 152 0
+  clock settle
+  tap "upnext-2-delete"
+  clock data
+  expect tree missing "upnext-2"
+
 test "tasks and the name survive a reload"
   clock +1600
   tap "onb-skip"

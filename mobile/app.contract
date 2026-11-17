@@ -403,6 +403,8 @@ component App
     send located = getCurrentPosition(enableHighAccuracy=true, maximumAge=0)
   action openAddTask
     nav = push(nav, "/new-task")
+  action openEditTask(id: string)
+    nav = push(nav, path("editTask", id))
   action commitTask(id: string, title: string, notes: string, categoryId: string, due: string, time: string)
     send saved = saveTask(id, title.trim(), notes.trim(), categoryId, due, time)
     nav = back(nav)
@@ -580,13 +582,31 @@ component App
                               text "Overdue" font="-exact-footnote" color="ink.on-hero"
                         column margin="0px 16px" padding=16 gap=4 border-radius=24 background-color="surface.card" testId="upnext"
                           text "Up next" role="heading" aria-level=2 color="text.primary" font="-exact-title3"
-                          for x in upNext key=x.id
-                            row gap=12 align-items="center" min-height=44 testId=`upnext-${x.id}`
-                              view width=10 height=10 border-radius=5 background-color=catToken(categories, x.categoryId)
-                              column flex=1 min-width=0
-                                text x.title color="text.primary"
-                                if dueText(x) != ""
-                                  text dueText(x) font="-exact-footnote" color=(isOverdue(x, today) ? "-exact-system-red" : "text.secondary")
+                          list
+                            for x in upNext key=x.id
+                              // Swipe right completes; swipe left shows Edit then Delete (a full swipe presses the outermost).
+                              scroll swipeContent=`row-${x.id}` swipeLeading=`complete-${x.id}` swipeTrailing=`edit-${x.id},delete-${x.id}`
+                                display="flex" padding-right=0 overflow-x="scroll" overflow-y="hidden" scrollbar-width="none"
+                                scroll-snap-type="x mandatory" scrollLeft=76 testId=`upnext-${x.id}`
+                                button id=`complete-${x.id}` press=toggle(x.id, true) appearance="none" aria-label="Complete" display="flex"
+                                  width=76 flex-shrink=0 scroll-snap-align="start" background-color="swipe.complete"
+                                  align-items="center" justify-content="center" testId=`upnext-${x.id}-complete`
+                                  image "symbol:checkmark" color="swipe.glyph" aria-hidden=true width=24 height=24
+                                row id=`row-${x.id}` gap=12 align-items="center" min-height=44 width="100%" flex-shrink=0
+                                  scroll-snap-align="start" box-sizing="border-box" background-color="surface.card"
+                                  view width=10 height=10 border-radius=5 background-color=catToken(categories, x.categoryId)
+                                  column flex=1 min-width=0
+                                    text x.title color="text.primary"
+                                    if dueText(x) != ""
+                                      text dueText(x) font="-exact-footnote" color=(isOverdue(x, today) ? "-exact-system-red" : "text.secondary")
+                                button id=`edit-${x.id}` press=openEditTask(x.id) appearance="none" aria-label="Edit" display="flex"
+                                  width=76 flex-shrink=0 scroll-snap-align="start" background-color="swipe.edit"
+                                  align-items="center" justify-content="center" testId=`upnext-${x.id}-edit`
+                                  image "symbol:compose" color="swipe.glyph" aria-hidden=true width=24 height=24
+                                button id=`delete-${x.id}` press=remove(x.id) appearance="none" aria-label="Delete" display="flex"
+                                  width=76 flex-shrink=0 scroll-snap-align="start" background-color="swipe.delete"
+                                  align-items="center" justify-content="center" testId=`upnext-${x.id}-delete`
+                                  image "symbol:delete" color="swipe.glyph" aria-hidden=true width=24 height=24
                           if upNext.length == 0
                             text "Nothing to do." color="text.secondary"
                   else if e.name == "tasks"

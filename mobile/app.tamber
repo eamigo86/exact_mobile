@@ -17,6 +17,12 @@ theme
   up = light-dark(#16803c, #3ddc84)
   down = light-dark(#d32f2f, #ff6b6b)
 
+  // Home's swipe actions: flush painted rectangles with white glyphs, readable in both schemes.
+  swipe.complete = light-dark(#1e8a3c, #2e9b4f)
+  swipe.edit = light-dark(#0a67d0, #2f7fe0)
+  swipe.delete = light-dark(#d32f2f, #e5484d)
+  swipe.glyph = #ffffff scheme=fixed
+
   hero.base = light-dark(#ffe3cf, #4a2618)
   hero.glow1 = light-dark(#ffb68a, #8a4526)
   hero.glow2 = light-dark(#ffd9e0, #6b2d45)
