@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../../.exact/exact2/scripts/app.schema.json",
+  "$schema": ".exact/checkout/scripts/app.schema.json",
   "name": "Exact Todo",
   "short_name": "Exact Todo",
   "id": "com.example.exacttodo",

@@ -5,11 +5,11 @@
     "": {
       "name": "mobile",
       "dependencies": {
-        "@exact/geolocation": "file:../../../../.exact/exact2/packages/geolocation",
+        "@exact/geolocation": "file:.exact/checkout/packages/geolocation",
       },
     },
   },
   "packages": {
-    "@exact/geolocation": ["@exact/geolocation@file:../../../../.exact/exact2/packages/geolocation", {}],
+    "@exact/geolocation": ["@exact/geolocation@file:.exact/checkout/packages/geolocation", {}],
   }
 }

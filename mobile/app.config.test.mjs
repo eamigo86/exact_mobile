@@ -4,8 +4,8 @@ import { expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 
 const app = JSON.parse(readFileSync(`${import.meta.dir}/app.json`, 'utf8'));
-const tamber = readFileSync(`${import.meta.dir}/app.tamber`, 'utf8');
-const page = tamber.match(/surface\.page = light-dark\((#[0-9a-f]{6}), (#[0-9a-f]{6})\)/i);
+const forma = readFileSync(`${import.meta.dir}/app.forma`, 'utf8');
+const page = forma.match(/surface\.page = light-dark\((#[0-9a-f]{6}), (#[0-9a-f]{6})\)/i);
 
 test('the launch colour is the page colour in light and dark', () => {
   expect(page).not.toBeNull();
