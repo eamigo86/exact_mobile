@@ -21,7 +21,7 @@ app (`../nsh_mobile`, branch `feat/nsh-avatar`) to compare both frameworks (2026
 
 ## Constraints
 
-- Branch `feat/exact-avatar` from `feat/exact-onboarding` (3cada56). Exact SDK `~/.exact/exact2` (33faab4a).
+- Branch `feat/exact-avatar` from `feat/exact-onboarding` (60ec0b8). Exact SDK `~/.exact/exact2` (33faab4a).
 - Keep `make check` and `make test` green. No `share`, `feedback send` or `feedback always`.
 - Artifacts in English. Conventional commits, no attribution lines, no push.
 
@@ -49,8 +49,8 @@ app (`../nsh_mobile`, branch `feat/nsh-avatar`) to compare both frameworks (2026
 
 ## Progress / evidence
 
-- T1: branch created from 3cada56.
-- T2 (commit b45efe6): RED first: with only the tests written, `make test`: "21 passed, 5 failed" (pick tests
+- T1: branch created from 60ec0b8.
+- T2 (commit 95fdfe5): RED first: with only the tests written, `make test`: "21 passed, 5 failed" (pick tests
   failed with "@avatar-file: no held device request", greeting test with "Good morning, Ada").
   GREEN: `make test`: 26 passed, 0 failed (transforms ran for real on the web test host).
   `make check`: `[]` (no errors). `make test-location`: 4 pass, 0 fail. `make test-config`: 3 pass, 0 fail.
@@ -87,7 +87,7 @@ and the simulator's sample landscape photos.
 - iOS: "Choose photo" and the avatar open PHPicker (tinted with the app accent); cancel keeps the photo; a landscape
   photo is centre-cropped; Home shows the avatar before "Hello, Ada"; Remove restores the symbol; the photo survives a
   relaunch.
-- Bug found and fixed (66803dc): in Settings the photo did not show. (1) A native `button` draws only text and symbols
+- Bug found and fixed (60531a4): in Settings the photo did not show. (1) A native `button` draws only text and symbols
   on iOS, so the photo inside it was empty: the avatar is now a `column role="button" press=...`. (2) In the
   inset-grouped list row the picture did not change after a new pick until a relaunch (keying the `image` alone did not
   help): the profile row is now keyed by the photo path (`for a in [avatar] key=a`). Home, outside the list, updated at

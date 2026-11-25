@@ -24,7 +24,7 @@ crate) to compare offline/local-database support (2026-11-16 request).
 
 ## Constraints
 
-- Branch `feat/exact-sqlite` from `feat/exact-avatar` (cbfbe00). Exact SDK `~/.exact/exact2` (33faab4a).
+- Branch `feat/exact-sqlite` from `feat/exact-avatar` (f90efca). Exact SDK `~/.exact/exact2` (33faab4a).
 - Keep `make check`, `make test`, `make test-location` and `make test-config` green. No `share` or `feedback` verbs.
 - Artifacts in English. Conventional commits, no attribution lines, no push.
 
@@ -52,8 +52,8 @@ crate) to compare offline/local-database support (2026-11-16 request).
 
 ## Progress / evidence
 
-- T1: branch created from cbfbe00.
-- T2 (commit 53646f0, route: delegated writer). TDD strict, runner `make test`.
+- T1: branch created from f90efca.
+- T2 (commit 27205ad, route: delegated writer). TDD strict, runner `make test`.
   - RED: `make test-storage` (new, `bun test app.storage.test.mjs`, fake storage with bun:sqlite) before the change:
     6 pass, 1 fail (`the JSON file is imported once ... todo.json.bak`: `todo.json` still present).
     The behaviour tests (add/edit/toggle/delete, duplicate refusal, reload) passed on the JSON store too.

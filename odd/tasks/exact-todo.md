@@ -43,9 +43,9 @@ avatars, biometrics, push, side menu, server templates.
 
 ## Tasks
 
-- [x] T1 Scaffold: SDK + Bun bootstrap, `exact new --with ios,android`, git, Makefile. Route: inline (mechanical, one file). Evidence: `make check` → `[]`; commit c8cfb88.
-- [x] T2 Tasks + categories + dashboard + settings app (tests first). Route: delegated writer (2+ non-trivial files). Evidence: RED 0/8 → GREEN 8/8 `make test`; `make verify` clean (0 findings); commit 3aae12a.
-- [x] T3 Platform checks: `verify web`, `verify ios`, `verify android`. Route: inline per-action. Evidence: iOS 8/8, light/dark + largest text 0 findings (after fixing task-row chevron layout and 44 pt touch target, commit b979b49); Android emulator (API 35) 8/8, screenshots reviewed by hand (Exact does not judge Android layout yet).
+- [x] T1 Scaffold: SDK + Bun bootstrap, `exact new --with ios,android`, git, Makefile. Route: inline (mechanical, one file). Evidence: `make check` → `[]`; commit b09487d.
+- [x] T2 Tasks + categories + dashboard + settings app (tests first). Route: delegated writer (2+ non-trivial files). Evidence: RED 0/8 → GREEN 8/8 `make test`; `make verify` clean (0 findings); commit 988d401.
+- [x] T3 Platform checks: `verify web`, `verify ios`, `verify android`. Route: inline per-action. Evidence: iOS 8/8, light/dark + largest text 0 findings (after fixing task-row chevron layout and 44 pt touch target, commit 0378f18); Android emulator (API 35) 8/8, screenshots reviewed by hand (Exact does not judge Android layout yet).
 
 ## Acceptance criteria
 

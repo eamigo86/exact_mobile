@@ -9,7 +9,7 @@ every feature working. Exact has no releases; `main` was 1539 commits ahead (202
 
 ## Scope and constraints
 
-- Branch `chore/exact-sdk-main` from `main` (1c92cde).
+- Branch `chore/exact-sdk-main` from `main` (73a45e9).
 - SDK: `~/.exact/exact2` (shallow clone) checked out at 3e84781a. The old pin stays reachable as the local branch
   `pin-33faab4a` in that clone, so going back needs no network.
 - App: `bun exact.mjs update` rewrites `exact.mjs`, the crates.io patches, the toolchain and the exact2 dependency paths.
@@ -55,7 +55,7 @@ every feature working. Exact has no releases; `main` was 1539 commits ahead (202
   (Live), Location (system prompt, then the simulated position). The emulator's copy had no tasks or name before this
   change too (the old build shows the same). Up next swipe checked with a test task added for it: left shows Edit and
   Delete, right shows Complete, Delete removes the row. The test tasks were deleted; the app is back to no tasks.
-- Baseline A/B with the old build (SDK `pin-33faab4a` + app `main` 1c92cde), then back to the new SDK on both devices:
+- Baseline A/B with the old build (SDK `pin-33faab4a` + app `main` 73a45e9), then back to the new SDK on both devices:
   - iOS Settings avatar: the 64 pt circle is cut flat at the top and sides inside its grouped row. The old build shows
     the same, so it predates this change.
   - iOS data survived the old/new round trip (data container backed up first).

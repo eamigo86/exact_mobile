@@ -46,7 +46,7 @@ Out of scope: swipe actions on the Tasks or Categories screens, undo, web and de
 
 ## Constraints
 
-- Branch `feat/exact-home-swipe` from `feat/exact-chart` (db7da0b). Exact SDK ~/.exact/exact2 (33faab4a).
+- Branch `feat/exact-home-swipe` from `feat/exact-chart` (39b1fce). Exact SDK ~/.exact/exact2 (33faab4a).
 - Never run the `share` or `feedback` verbs.
 - The modified `.atl/` files are not part of this feature: never stage them.
 - Keep the existing checks green. Artifacts in English. Conventional commits, no attribution lines, no push.
@@ -70,8 +70,8 @@ Out of scope: swipe actions on the Tasks or Categories screens, undo, web and de
 
 ## Progress / evidence
 
-- T1: branch created from db7da0b.
-- T2 (commit 0f8c286, `feat(home): add swipe actions to the up next rows`):
+- T1: branch created from 39b1fce.
+- T2 (commit 829b26a, `feat(home): add swipe actions to the up next rows`):
   - RED (`make test`, before any contract change): 31 passed, 4 failed. Three failed with `no view matches
     upnext-1-complete|upnext-2-edit|upnext-1-delete by testId, label or text`; the gesture test failed with `drag: from
     (210,524.59) to (510,524.59) leaves the viewport (420 x 900)` (a test-authoring error, fixed as below).
@@ -112,12 +112,12 @@ Out of scope: swipe actions on the Tasks or Categories screens, undo, web and de
   - `./exact.mjs android` builds and installs; there is no build-only flag seen.
 - Platform notes: web check light and dark clean. Icons use roles `checkmark`, `compose`, `delete` (no `sf/` symbol
   needed, so they draw on Android too).
-- Authored lines (`git diff --numstat db7da0b..0f8c286 -- mobile`): contract +27/-7, theme +6, tests +93 (126 added,
+- Authored lines (`git diff --numstat 39b1fce..829b26a -- mobile`): contract +27/-7, theme +6, tests +93 (126 added,
   7 removed overall). Four tests, about 17-35 lines each, dominated by the add-task setup steps.
 
 ## T2 correction (device findings)
 
-Commit 8431fc0 `fix(home): make the up next swipe rows engage on ios and android`. Route: delegated writer.
+Commit 35ace6b `fix(home): make the up next swipe rows engage on ios and android`. Route: delegated writer.
 
 ### Root cause
 - The iOS Simulator log said `exact: swipeContent on #75 is refused: "edit-2,delete-2" names no one descendant of it`.
@@ -128,8 +128,8 @@ Commit 8431fc0 `fix(home): make the up next swipe rows engage on ios and android
 
 ### Per-item outcomes
 1. Android rests open: fixed. Proven A/B on the emulator: any `scrollLeft` on these rows built while the splash covers
-   Home is dropped, and on cold start Home's body renders blank until a tab switch (reproduced on 0f8c286, and with
-   `scrollLeft=(covered ? 0 : 88)` and with a `scroll=` handler; pre-feature db7da0b cold-starts fine; no `scrollLeft`
+   Home is dropped, and on cold start Home's body renders blank until a tab switch (reproduced on 829b26a, and with
+   `scrollLeft=(covered ? 0 : 88)` and with a `scroll=` handler; pre-feature 39b1fce cold-starts fine; no `scrollLeft`
    renders but rests open). Building the list under `if not covered` fixes both: cold start renders, rows rest closed.
    Kept as an app-level workaround (3 lines incl. comment); the quirk lives in `host/painted/src/presenter/collection.rs`
    (scroll binding applied once, skipped while the route is covered).
@@ -158,7 +158,7 @@ both sides (iOS), left open, two open, and open-on-Complete (Android).
 - `contract vocab swipe` does not say the names are space-separated; a comma silently refuses the row on iOS only.
 - Android: scrollLeft on rows built while covered is dropped and can blank the screen; one-row-open and full swipe are
   iOS only. iOS: a partial reverse drag from fully open can rest part-way (Edit peeking) until touched again.
-- Authored lines of the correction (`git diff --numstat 0f8c286..8431fc0 -- mobile`): contract +30/-25, test +1/-1.
+- Authored lines of the correction (`git diff --numstat 829b26a..35ace6b -- mobile`): contract +30/-25, test +1/-1.
 
 ## Spec change (2026-11-17, user, after the first device check)
 
@@ -171,14 +171,14 @@ both sides (iOS), left open, two open, and open-on-Complete (Android).
 
 iPhone 17 Pro Simulator (iOS 26.5, `make ios`) and Pixel 9 Pro XL emulator (API 35, `./exact.mjs android`).
 
-- First build (0f8c286):
+- First build (829b26a):
   - Android rested open on Complete.
   - iOS let two rows be open at once.
   - Tapping the content did not close the row.
   - A full swipe never fired.
   - iOS drew separators across the rows.
   - Root cause of most of these: the comma-separated `swipeTrailing` names (see the correction section).
-- Final build (8431fc0):
+- Final build (35ace6b):
   - iOS: no separators; the left overlay keeps the text in place; the right swipe shows Complete with the 12 pt gap.
   - Android: the left overlay and the right gap are correct, and the row rests closed after a cold start.
 - Still open on Android: a row ADDED while the app is running rests open on Complete, until the next cold start.
@@ -211,7 +211,7 @@ Reading:
   investigated.
 
 Authored lines, final (code + tests, docs excluded):
-- Exact (`db7da0b..HEAD`): contract +32/-7, theme +6, tests +93. Code 38 lines.
+- Exact (`39b1fce..HEAD`): contract +32/-7, theme +6, tests +93. Code 38 lines.
 - NSH (`6922eb1..HEAD`): swipe row 107, snap maths 20, Home +16/-4, theme 8, icons +4/-1, tests 107. Code 155 lines.
 
 ## T3 follow-up: Android rows added at runtime (2026-11-17)
@@ -224,7 +224,7 @@ Authored lines, final (code + tests, docs excluded):
   requested `scrollLeft` as consumed but does not apply it. When the route shows again the request is unchanged, so it
   is never applied. A row built while Home is hidden (the splash, or the Tasks tab where the task is added) rests at 0,
   which is open on Complete.
-- Fix (commit after d2ff5e3): build the list under `if not covered and nav.tab == "home"`, a one-line condition with the
+- Fix (commit after 403d09b): build the list under `if not covered and nav.tab == "home"`, a one-line condition with the
   same pattern as the splash case. `make check` clean; `make test` 35 passed, 0 failed.
 - Device check:
   - Android: a cold start rests closed with no blank screen. A task added from Tasks rests closed back on Home. Left
@@ -252,7 +252,7 @@ Authored lines, final (code + tests, docs excluded):
 
 ### Device verification of spec change 2 (2026-11-17)
 
-- Build 0f7ef93, iOS 26.5 Simulator and Android API 35 emulator:
+- Build face8ff, iOS 26.5 Simulator and Android API 35 emulator:
   - A left swipe pushes the whole row to show rounded Edit and Delete (12 pt radius) with 8 pt between them.
   - A right swipe shows a rounded Complete with the 12 pt gap.
   - Android: a task added from the Tasks tab still rests closed on Home.
@@ -261,7 +261,7 @@ Authored lines, final (code + tests, docs excluded):
 ### Final measurement (2026-11-17, standard push + rounded actions)
 
 Same method as the earlier measurement: Pixel 9 Pro XL emulator API 35 at 60 Hz, 2 runs of 10 open/close cycles, with
-SurfaceFlinger latency on the app layer and app CPU from `/proc/<pid>/stat`. Builds: NSH 79f64e9, Exact 0f7ef93.
+SurfaceFlinger latency on the app layer and app CPU from `/proc/<pid>/stat`. Builds: NSH 79f64e9, Exact face8ff.
 
 | Build | Frames / gesture (median) | Interval p50 | p90 | p99 | Janky (>25 ms) | App CPU (one core) |
 |---|---|---|---|---|---|---|

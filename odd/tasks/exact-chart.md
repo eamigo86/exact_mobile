@@ -38,7 +38,7 @@ Out of scope: other symbols or intervals, order books, web and desktop checks.
 
 ## Constraints
 
-- Branch `feat/exact-chart from feat/exact-sqlite (1911c17)`. Exact SDK ~/.exact/exact2 (33faab4a). No share or feedback verbs.
+- Branch `feat/exact-chart from feat/exact-sqlite (176eace)`. Exact SDK ~/.exact/exact2 (33faab4a). No share or feedback verbs.
 - Keep the existing checks green. Artifacts in English. Conventional commits, no attribution lines, no push.
 
 ## TDD
@@ -59,7 +59,7 @@ Out of scope: other symbols or intervals, order books, web and desktop checks.
 ## Progress / evidence
 
 - T1: branch created.
-- T2 (commit 14baa59, `feat(market): add a live BTC-USD candlestick chart`): route delegated writer. TDD: `chart.test.mjs` written first; RED observed (`Cannot find module './chart.ts'`), then GREEN; a second RED for `backoffSecs`/`pinchDist` (`Export named 'backoffSecs' not found`) and for `app.market.test.mjs` (`Export named 'market' not found`). The Contract tests were written alongside the Contract change (no separate RED run; the first `make test` run failed on a compile warning and a test syntax error, then passed).
+- T2 (commit 469303f, `feat(market): add a live BTC-USD candlestick chart`): route delegated writer. TDD: `chart.test.mjs` written first; RED observed (`Cannot find module './chart.ts'`), then GREEN; a second RED for `backoffSecs`/`pinchDist` (`Export named 'backoffSecs' not found`) and for `app.market.test.mjs` (`Export named 'market' not found`). The Contract tests were written alongside the Contract change (no separate RED run; the first `make test` run failed on a compile warning and a test syntax error, then passed).
   - `make check`: `[]` (no errors).
   - `make test`: 31 passed, 0 failed (4 new Market tests).
   - `make test-storage`: 7 pass. `make test-location`: 4 pass. `make test-config`: 3 pass.

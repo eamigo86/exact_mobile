@@ -41,7 +41,7 @@ quality, lines of code, difficulty and limitations (2026-11-16 request).
 
 ## Tasks
 
-- [x] T1 Branch `feat/exact-onboarding` from `feat/exact-geolocation` (b09c0ab); this document. Route: inline (mechanical).
+- [x] T1 Branch `feat/exact-onboarding` from `feat/exact-geolocation` (3986240); this document. Route: inline (mechanical).
 - [x] T2 Brand assets and native launch: logo and icon SVG/PNG, `background_color` light and dark, app icons (no `launchImage`: colour only on both platforms, decided by the requester). Route: delegated writer (T2-T4, one writer, trigger: 2+ non-trivial files).
 - [x] T3 Animated in-app splash and the 4-step onboarding, tests first. Route: delegated writer.
 - [x] T4 Settings: "Show onboarding" and Appearance (System/Light/Dark, persisted, applied at launch), tests first. Route: delegated writer.
@@ -63,12 +63,12 @@ quality, lines of code, difficulty and limitations (2026-11-16 request).
 
 ## Progress / evidence
 
-- T1: branch created from b09c0ab.
-- T2 (08849df): RED `bun test app.config.test.mjs`: 1 pass, 2 fail. GREEN after app.json (`background_color`
+- T1: branch created from 3986240.
+- T2 (1a0aaac): RED `bun test app.config.test.mjs`: 1 pass, 2 fail. GREEN after app.json (`background_color`
   #f6f3ee, dark #151210 = `surface.page` tokens; `icons`: icon-1024.png "maskable any" + icon.svg; no `launchImage`):
   3 pass. `make check` `[]`; `make test` 12 passed; `ios --no-install` exit 0 (Info.plist: `UILaunchScreen` colour only,
   `AppIcon` present); `android --no-install` exit 0 (aapt2: adaptive icon res/s3.xml, `roundIcon` set). New `make test-config`.
-- T3+T4 (db04f72, one commit: both edit the same few places in app.contract). RED `make test`: 12 passed, 8 failed (new
+- T3+T4 (03cb56f, one commit: both edit the same few places in app.contract). RED `make test`: 12 passed, 8 failed (new
   tests). After implementing, existing tests failed too ("view is hidden or inert": splash covers the app) until each got
   a 3-line prelude (`clock +1600`, `tap "onb-skip"`, `clock settle`; after `reload` a `clock +1600`). GREEN: `make check`
   `[]`, `make test` 21 passed 0 failed, `make test-config` 3 pass, `make test-location` 4 pass (prelude added to
@@ -114,8 +114,8 @@ Platform limits (documented, by reading)
 - Web: tab-role dots draw a grey tile behind the current dot; `background-color="transparent"` did not remove it.
 
 Lines (authored; `git diff --stat`)
-- T2 08849df: app.json +18, Makefile +4/-1, config test +26, SVG/PNG masters 171 lines of SVG files (not Contract).
-- T3+T4 db04f72: app.contract +315/-5 = about 130 illustration and logo markup (4 art components 109 lines, splash logo
+- T2 1a0aaac: app.json +18, Makefile +4/-1, config test +26, SVG/PNG masters 171 lines of SVG files (not Contract).
+- T3+T4 03cb56f: app.contract +315/-5 = about 130 illustration and logo markup (4 art components 109 lines, splash logo
   about 20) and about 185 logic, layout, keyframes and Settings; app.test.contract +135 (about 60 are the
   existing-test preludes and fixes, about 75 new tests); app.test.mjs +3.
 - Total Contract source added: about 450 plus 26 JS config test.
@@ -129,9 +129,9 @@ Launches recorded (`simctl io recordVideo`, the emulator's `screenrecord`) and r
   onboarding. A real finger swipe, Next, Back, Skip, dots and Get started work. Settings: Appearance is a native
   `UISegmentedControl`; Dark applies at once (status bar and tab bar included) and survives a relaunch; the splash then
   plays in dark. "Show onboarding again" opens step 1 and Skip returns to Settings.
-- Bug found and fixed (d13372c): the overlays ignored the safe area (Skip under the status bar, Next on the home
+- Bug found and fixed (6cedad4): the overlays ignored the safe area (Skip under the status bar, Next on the home
   indicator). `env(safe-area-inset-*)` is 0 there (documented pitfall); `var(--exact-safe-area-inset-*)` works.
-- Bug found and fixed (233d652): on Android the root `tablist` is a native bar that the overlays do not cover (the docs
+- Bug found and fixed (4868bb3): on Android the root `tablist` is a native bar that the overlays do not cover (the docs
   say later root children paint over the native bars on every host), so it hid Next. The tablist now gets
   `display="none"` while the splash or onboarding shows (the documented way to hide it).
 - iOS launch screen: white (#ffffff) on the simulator, although Info.plist has `UILaunchScreen.UIColorName` and the
